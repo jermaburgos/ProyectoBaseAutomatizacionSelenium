@@ -1,13 +1,14 @@
 package page;
 
-import base.baseInicializacion;
 import locators.home_locators;
 import locators.phones_locators;
+import locators.cameras_locators;
+import locators.components_locators;
+import locators.cart_locators;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class page_Home extends page_generic
-        implements home_locators, phones_locators {
+        implements home_locators, phones_locators, cart_locators, components_locators, cameras_locators {
 
 
 
@@ -19,7 +20,30 @@ public class page_Home extends page_generic
 
 
     public void clickPhones() {
-        clicElemtent(btn_phones);
+        clicElement(btn_phones);
         validateTitle("Phones & PDAs", title_phones);
+    }
+
+    public void clickCameras() {
+        clicElement(btn_cameras);
+        validateTitle("Cameras", title_cameras);
+    }
+
+    public void ingresarCarrito() {
+        ejecutarPaso("Ingresar al carrito", () -> {
+            clicElement(div_cart);
+            clicElement(a_viewCart);
+        });
+    }
+
+    public void irAComponentsYMonitors() {
+        ejecutarPaso("Ir a Components", () -> {
+            hoverElement(menu_components);
+        });
+
+        ejecutarPaso("Ingresar a Monitors", () -> {
+            clicElement(menu_monitors);
+        });
+        validateTitle("Monitors", title_monitors);
     }
 }
