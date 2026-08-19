@@ -46,6 +46,7 @@ jobs:
             -Dsurefire.suiteXmlFiles=src/test/resources/testng-unit.xml \
             -Dbrowser=chrome \
             -Dheadless=true \
+            -Dreport.scope=unit \
             -Dapproval.threshold=95
 
       - name: Reporte Unit Tests
@@ -54,7 +55,8 @@ jobs:
         with:
           name: unit-report
           path: |
-            reports/
+            reports/unit/
+            reports/summary/unit/
             target/surefire-reports/
 
   smoke:
@@ -83,6 +85,7 @@ jobs:
             -Dgroups=smoke \
             -Dbrowser=chrome \
             -Dheadless=true \
+            -Dreport.scope=business \
             -Dapproval.threshold=${APPROVAL_THRESHOLD}
 
       - name: Reporte Smoke
@@ -91,7 +94,8 @@ jobs:
         with:
           name: smoke-report
           path: |
-            reports/
+            reports/business/
+            reports/summary/business/
             target/surefire-reports/
 
 
@@ -121,6 +125,7 @@ jobs:
             -Dgroups=regression \
             -Dbrowser=chrome \
             -Dheadless=true \
+            -Dreport.scope=business \
             -Dapproval.threshold=${APPROVAL_THRESHOLD}
 
       - name: Reporte Regression
@@ -129,5 +134,6 @@ jobs:
         with:
           name: regression-report
           path: |
-            reports/
+            reports/business/
+            reports/summary/business/
             target/surefire-reports/

@@ -41,7 +41,10 @@ public class ExtentManager {
     }
 
     private static Path crearDirectorioReportes() throws IOException {
-        Path reportsDir = Paths.get("reports");
+        Path reportsDir = Paths.get(
+                "reports",
+                System.getProperty("report.scope", "business")
+        );
         Files.createDirectories(reportsDir);
         return reportsDir;
     }
@@ -65,17 +68,18 @@ public class ExtentManager {
         configurarReporter(spark);
 
         return spark;
-        }
+    }
 
     private static void configurarReporter(
             ExtentSparkReporter spark) {
 
         spark.config().setDocumentTitle(
-                "Reporte de Automatización"
+                "Reporte de Automatizacion"
         );
 
         spark.config().setReportName(
-                "Ejecución Selenium + TestNG"
+                "Ejecucion Selenium + TestNG - "
+                        + System.getProperty("report.scope", "business")
         );
 
         spark.config().setTheme(
@@ -101,6 +105,7 @@ public class ExtentManager {
                 })
                 .apply();
     }
+
     private static void configurarSistema() {
         extent.setSystemInfo("Proyecto", "Automation Testing");
         extent.setSystemInfo("Framework", "Selenium + TestNG + ExtentReports");
@@ -113,5 +118,4 @@ public class ExtentManager {
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         return ahora.format(formato);
     }
-
 }

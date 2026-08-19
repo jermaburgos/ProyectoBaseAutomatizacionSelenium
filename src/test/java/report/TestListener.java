@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TestListener implements ITestListener, IExecutionListener {
     private static ExtentReports extent =
@@ -41,6 +42,9 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     private final GroupStatistics overallStatistics =
             new GroupStatistics();
+
+    private static final AtomicBoolean executionFinished =
+            new AtomicBoolean(false);
 
     private final double approvalThreshold =
             Double.parseDouble(
@@ -146,6 +150,10 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     @Override
     public void onExecutionFinish() {
+        if (!executionFinished.compareAndSet(false, true)) {
+            return;
+        }
+
         String veredictoFinal = obtenerVeredictoFinal();
         try {
             generarResumenFinal();
@@ -332,7 +340,11 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     private void escribirResumenEnArchivo(String resumenMarkdown) {
         try {
-            Path carpeta = Paths.get("reports", "summary");
+            Path carpeta = Paths.get(
+                    "reports",
+                    "summary",
+                    System.getProperty("report.scope", "business")
+            );
             Files.createDirectories(carpeta);
 
             String timestamp = ZonedDateTime.now()

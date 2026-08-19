@@ -276,6 +276,15 @@ El workflow está en `.github/workflows/automation.yml` y expone `inputs` para e
 
 ### Inputs manuales
 
+### Salidas separadas
+
+- Pruebas unitarias:
+  - `reports/unit/`
+  - `reports/summary/unit/`
+- Pruebas de negocio:
+  - `reports/business/`
+  - `reports/summary/business/`
+
 Cuando ejecutas el workflow manualmente puedes definir:
 
 - `suite`
@@ -303,9 +312,10 @@ approval_threshold: 95
 ### Resultado del workflow
 
 - Genera reportes HTML de Extent.
-- Guarda resúmenes markdown en `reports/summary`.
+- Guarda resúmenes markdown en carpetas separadas por tipo de suite.
 - Sube artifacts con:
-  - `reports/`
+  - `reports/unit/` o `reports/business/`
+  - `reports/summary/unit/` o `reports/summary/business/`
   - `target/surefire-reports/`
 
 ## Troubleshooting
