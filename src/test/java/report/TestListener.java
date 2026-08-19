@@ -291,7 +291,6 @@ public class TestListener implements ITestListener, IExecutionListener {
     private void generarResumenFinal() {
         String resumenMarkdown = construirResumenMarkdown();
         escribirResumenEnArchivo(resumenMarkdown);
-        registrarResumenEnExtent(construirResumenHtml(), resumenMarkdown);
     }
 
     private void registrarResumenEnExtent(String resumenHtml, String resumenMarkdown) {
@@ -311,34 +310,35 @@ public class TestListener implements ITestListener, IExecutionListener {
     }
 
     private void aplicarResumenAExtent() {
+        extent.setSystemInfo("Resumen Final", " ");
         extent.setSystemInfo(
-                "Overall Approval",
+                "Resumen Final - Overall Approval",
                 formatearPorcentaje(overallStatistics.getApprovalPercentage())
         );
         extent.setSystemInfo(
-                "Overall Passed",
+                "Resumen Final - Overall Passed",
                 String.valueOf(overallStatistics.getPassed())
         );
         extent.setSystemInfo(
-                "Overall Failed",
+                "Resumen Final - Overall Failed",
                 String.valueOf(overallStatistics.getFailed())
         );
         extent.setSystemInfo(
-                "Overall Skipped",
+                "Resumen Final - Overall Skipped",
                 String.valueOf(overallStatistics.getSkipped())
         );
         extent.setSystemInfo(
-                "Approval Threshold",
+                "Resumen Final - Approval Threshold",
                 formatearPorcentaje(approvalThreshold)
         );
         extent.setSystemInfo(
-                "Final Verdict",
+                "Resumen Final - Final Verdict",
                 obtenerVeredictoFinal()
         );
 
         groupStatistics.forEach((group, statistics) -> {
             extent.setSystemInfo(
-                    "Approval " + group,
+                    "Resumen Final - Approval " + group,
                     formatearPorcentaje(statistics.getApprovalPercentage())
             );
         });
