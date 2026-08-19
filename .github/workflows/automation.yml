@@ -44,6 +44,7 @@ jobs:
         run: |
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng-unit.xml \
+            -Dscreenshots=true \
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=unit \
@@ -83,6 +84,7 @@ jobs:
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=smoke \
+            -Dscreenshots=true \
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=business \
