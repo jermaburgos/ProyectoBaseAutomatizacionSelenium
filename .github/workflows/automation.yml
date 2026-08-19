@@ -61,6 +61,7 @@ jobs:
             target/surefire-reports/
 
   smoke:
+    environment: qa
     name: Smoke Tests
     needs: unit-tests
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke'
@@ -103,6 +104,7 @@ jobs:
 
 
   regression:
+    environment: qa
     name: Regression Tests
     needs: unit-tests
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'regression'
