@@ -136,17 +136,26 @@ public class driverFactory {
         options.addArguments("--disable-notifications");
         options.setAcceptInsecureCerts(true);
 
+
         if (headless) {
             options.addArguments("--headless=new");
             options.addArguments("--window-size=1920,1080");
+            options.addArguments("--force-device-scale-factor=0.8");
         }
     }
 
     private static void configurarOpcionesComunes(FirefoxOptions options, boolean headless) {
         options.setAcceptInsecureCerts(true);
 
+        options.addPreference(
+                "layout.css.devPixelsPerPx",
+                "0.8"
+        );
+
         if (headless) {
             options.addArguments("-headless");
+            options.addArguments("--width=1920");
+            options.addArguments("--height=1080");
         }
     }
 
@@ -157,6 +166,7 @@ public class driverFactory {
         if (headless) {
             options.addArguments("--headless=new");
             options.addArguments("--window-size=1920,1080");
+            options.addArguments("--force-device-scale-factor=0.8");
         }
     }
 }
