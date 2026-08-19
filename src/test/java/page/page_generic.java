@@ -283,6 +283,13 @@ public class page_generic {
         }
     }
     public void cerrarVentanaArchivos() {
+        if (esHeadless()) {
+            TestListener.step(
+                    "Headless activo: se omite el cierre del selector de archivos nativo"
+            );
+            return;
+        }
+
         try {
             Robot robot = new Robot();
 
@@ -296,5 +303,11 @@ public class page_generic {
                     e
             );
         }
+    }
+
+    private boolean esHeadless() {
+        return Boolean.parseBoolean(
+                System.getProperty("headless", "false")
+        );
     }
 }
