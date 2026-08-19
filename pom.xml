@@ -13,6 +13,9 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <selenium.version>4.35.0</selenium.version>
+    <browser>chrome</browser>
+    <headless>false</headless>
+    <screenshots>false</screenshots>
   </properties>
 
   <dependencies>
@@ -37,6 +40,11 @@
       <artifactId>extentreports</artifactId>
       <version>5.1.2</version>
     </dependency>
+    <dependency>
+      <groupId>com.openai</groupId>
+      <artifactId>openai-java</artifactId>
+      <version>4.43.0</version>
+    </dependency>
 
   </dependencies>
 
@@ -49,6 +57,20 @@
           <source>11</source>
           <target>11</target>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.6.0-M1</version>
+        <configuration>
+          <!-- Propiedades disponibles dentro de Java -->
+          <systemPropertyVariables>
+            <browser>${browser}</browser>
+            <headless>${headless}</headless>
+            <screenshots>${screenshots}</screenshots>
+          </systemPropertyVariables>
+        </configuration>
+
       </plugin>
     </plugins>
   </build>
