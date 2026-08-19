@@ -17,11 +17,19 @@ on:
         options:
           - smoke
           - regression
+      approval_threshold:
+        description: "Umbral de aprobación"
+        required: true
+        default: "95"
+        type: string
 
 jobs:
 
   smoke:
     name: Smoke Tests
+    if: github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke'
+    env:
+      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
 
     runs-on: ubuntu-latest
 
@@ -40,7 +48,8 @@ jobs:
           mvn clean test \
             -Dgroups=smoke \
             -Dbrowser=chrome \
-            -Dheadless=true
+            -Dheadless=true \
+            -Dapproval.threshold=${APPROVAL_THRESHOLD}
 
       - name: Reporte Smoke
         if: always()
@@ -54,8 +63,9 @@ jobs:
 
   regression:
     name: Regression Tests
-
-    needs: smoke
+    if: github.event_name != 'workflow_dispatch' || inputs.suite == 'regression'
+    env:
+      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
 
     runs-on: ubuntu-latest
 
@@ -74,7 +84,8 @@ jobs:
           mvn clean test \
             -Dgroups=regression \
             -Dbrowser=chrome \
-            -Dheadless=true
+            -Dheadless=true \
+            -Dapproval.threshold=${APPROVAL_THRESHOLD}
 
       - name: Reporte Regression
         if: always()

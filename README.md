@@ -259,6 +259,49 @@ mvn test "-Dtest=TestContextTest,ContextManagerTest,CodeAnalyzerServiceTest,Grou
 mvn test -Dtest=MonitorsTest -Dheadless=true
 ```
 
+## CI/CD en GitHub Actions
+
+El workflow está en `.github/workflows/automation.yml` y expone `inputs` para ejecución manual.
+
+### Disparadores
+
+- `push` a `main` y `develop`
+- `pull_request` hacia `main`
+- ejecución manual con `workflow_dispatch`
+
+### Inputs manuales
+
+Cuando ejecutas el workflow manualmente puedes definir:
+
+- `suite`
+  - `smoke`
+  - `regression`
+- `approval_threshold`
+  - umbral de aprobación del run
+  - valor por defecto: `95`
+
+### Ejemplo de inputs
+
+```text
+suite: smoke
+approval_threshold: 95
+```
+
+### Comportamiento
+
+- Si eliges `smoke`, el workflow ejecuta solo smoke.
+- Si eliges `regression`, el workflow ejecuta solo regression.
+- En `push` y `pull_request`, el workflow mantiene el comportamiento automático.
+- El umbral se pasa a Maven como `-Dapproval.threshold=<valor>`.
+
+### Resultado del workflow
+
+- Genera reportes HTML de Extent.
+- Guarda resúmenes markdown en `reports/summary`.
+- Sube artifacts con:
+  - `reports/`
+  - `target/surefire-reports/`
+
 ## Troubleshooting
 
 ### 1) `Unsupported browser`
