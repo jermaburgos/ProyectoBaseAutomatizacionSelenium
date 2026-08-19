@@ -17,11 +17,6 @@ on:
         options:
           - smoke
           - regression
-      approval_threshold:
-        description: "Umbral de aprobación"
-        required: true
-        default: "95"
-        type: string
 
 jobs:
 
@@ -48,7 +43,7 @@ jobs:
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=unit \
-            -Dapproval.threshold=95
+            -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TESTUNIT}} \
 
       - name: Reporte Unit Tests
         if: always()
@@ -63,9 +58,6 @@ jobs:
     name: Smoke Tests
     needs: unit-tests
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke'
-    env:
-      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -87,7 +79,7 @@ jobs:
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=business \
-            -Dapproval.threshold=${APPROVAL_THRESHOLD} \
+            -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
             -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Smoke
@@ -103,8 +95,6 @@ jobs:
     name: Regression Tests
     needs: unit-tests
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'regression'
-    env:
-      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
 
     runs-on: ubuntu-latest
 
@@ -126,7 +116,7 @@ jobs:
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=business \
-            -Dapproval.threshold=${APPROVAL_THRESHOLD} \
+            -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
             -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Regression
