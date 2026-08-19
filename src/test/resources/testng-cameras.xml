@@ -1,0 +1,15 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+
+<suite name="Cameras Suite">
+
+    <test name="Agregar Productos Desde Cameras">
+        <classes>
+            <class name="test.CamerasTest">
+                <methods>
+                    <include name="agregarProductosDesdeCameras"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+</suite>

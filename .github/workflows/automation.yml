@@ -17,11 +17,16 @@ on:
         options:
           - smoke
           - regression
+      approval_threshold:
+        description: "Umbral de aprobación"
+        required: true
+        default: "95"
+        type: string
 
 jobs:
 
-  smoke:
-    name: Smoke Tests
+  unit-tests:
+    name: Unit Tests
 
     runs-on: ubuntu-latest
 
@@ -29,7 +34,45 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar Unit Tests
+        run: |
+          mvn clean test \
+            -Dsurefire.suiteXmlFiles=src/test/resources/testng-unit.xml \
+            -Dscreenshots=true \
+            -Dbrowser=chrome \
+            -Dheadless=true \
+            -Dreport.scope=unit \
+            -Dapproval.threshold=95
+
+      - name: Reporte Unit Tests
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: unit-report
+          path: |
+            reports/unit/
+
+  smoke:
+    environment: qa
+    name: Smoke Tests
+    needs: unit-tests
+    if: github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke'
+    env:
+      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -38,24 +81,30 @@ jobs:
       - name: Ejecutar Smoke
         run: |
           mvn clean test \
+            -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=smoke \
+            -Dscreenshots=true \
             -Dbrowser=chrome \
-            -Dheadless=true
+            -Dheadless=true \
+            -Dreport.scope=business \
+            -Dapproval.threshold=${APPROVAL_THRESHOLD} \
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Smoke
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-report
           path: |
-            reports/
-            target/surefire-reports/
-
+            reports/business/
 
   regression:
+    environment: qa
     name: Regression Tests
-
-    needs: smoke
+    needs: unit-tests
+    if: github.event_name != 'workflow_dispatch' || inputs.suite == 'regression'
+    env:
+      APPROVAL_THRESHOLD: ${{ github.event_name == 'workflow_dispatch' && inputs.approval_threshold || '95' }}
 
     runs-on: ubuntu-latest
 
@@ -63,7 +112,7 @@ jobs:
 
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -72,15 +121,18 @@ jobs:
       - name: Ejecutar Regression
         run: |
           mvn clean test \
+            -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=regression \
             -Dbrowser=chrome \
-            -Dheadless=true
+            -Dheadless=true \
+            -Dreport.scope=business \
+            -Dapproval.threshold=${APPROVAL_THRESHOLD} \
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Regression
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: regression-report
           path: |
-            reports/
-            target/surefire-reports/
+            reports/business/

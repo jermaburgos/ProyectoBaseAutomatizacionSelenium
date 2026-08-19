@@ -68,7 +68,7 @@ public class page_generic {
         validarLocator(locator);
         TestListener.step("Clicking on element located by: " + locator.toString(),locator);
         wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
-        cerrarVentanaArchivos();
+
     }
 
     public void hoverElement(By locator) {
@@ -121,6 +121,7 @@ public class page_generic {
     }
 
     public void uploadFile(By locator, String filePath) {
+        cerrarVentanaArchivos();
         validarLocator(locator);
 
         Path path = Paths.get(filePath).toAbsolutePath().normalize();
@@ -282,6 +283,13 @@ public class page_generic {
         }
     }
     public void cerrarVentanaArchivos() {
+        if (esHeadless()) {
+            TestListener.step(
+                    "Headless activo: se omite el cierre del selector de archivos nativo"
+            );
+            return;
+        }
+
         try {
             Robot robot = new Robot();
 
@@ -295,5 +303,11 @@ public class page_generic {
                     e
             );
         }
+    }
+
+    private boolean esHeadless() {
+        return Boolean.parseBoolean(
+                System.getProperty("headless", "false")
+        );
     }
 }

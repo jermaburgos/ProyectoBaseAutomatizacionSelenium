@@ -259,6 +259,65 @@ mvn test "-Dtest=TestContextTest,ContextManagerTest,CodeAnalyzerServiceTest,Grou
 mvn test -Dtest=MonitorsTest -Dheadless=true
 ```
 
+## CI/CD en GitHub Actions
+
+El workflow está en `.github/workflows/automation.yml` y expone `inputs` para ejecución manual.
+
+### Disparadores
+
+- `push` a `main` y `develop`
+- `pull_request` hacia `main`
+- ejecución manual con `workflow_dispatch`
+
+### Orden de ejecución
+
+1. `unit-tests`
+2. `smoke` o `regression`, según el input manual o el disparador automático
+
+### Inputs manuales
+
+### Salidas separadas
+
+- Pruebas unitarias:
+  - `reports/unit/`
+  - `reports/summary/unit/`
+- Pruebas de negocio:
+  - `reports/business/`
+  - `reports/summary/business/`
+
+Cuando ejecutas el workflow manualmente puedes definir:
+
+- `suite`
+  - `smoke`
+  - `regression`
+- `approval_threshold`
+  - umbral de aprobación del run
+  - valor por defecto: `95`
+
+### Ejemplo de inputs
+
+```text
+suite: smoke
+approval_threshold: 95
+```
+
+### Comportamiento
+
+- Las pruebas unitarias se ejecutan primero en todos los casos.
+- Si eliges `smoke`, el workflow ejecuta solo smoke.
+- Si eliges `regression`, el workflow ejecuta solo regression.
+- En `push` y `pull_request`, el workflow mantiene el comportamiento automático.
+- El umbral se pasa a Maven como `-Dapproval.threshold=<valor>`.
+
+### Resultado del workflow
+
+- Genera reportes HTML de Extent.
+- Guarda resúmenes markdown en carpetas separadas por tipo de suite.
+- Sube artifacts con:
+  - `reports/unit/` o `reports/business/`
+  - `reports/summary/unit/` o `reports/summary/business/`
+  - `target/surefire-reports/`
+
 ## Troubleshooting
 
 ### 1) `Unsupported browser`

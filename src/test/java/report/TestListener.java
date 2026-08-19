@@ -1,10 +1,15 @@
 package report;
 
 import ai.FailureContext;
+import com.aventstack.extentreports.MediaEntityBuilder;
 import com.aventstack.extentreports.ExtentTest;
 import context.ContextManager;
+import driver.driverFactory;
 import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.testng.ITestContext;
+import org.testng.IExecutionListener;
 import org.testng.ITestListener;
 import com.aventstack.extentreports.ExtentReports;
 import org.testng.ITestResult;
@@ -21,8 +26,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TestListener implements ITestListener {
+public class TestListener implements ITestListener, IExecutionListener {
     private static ExtentReports extent =
             ExtentManager.getInstance();
 
@@ -40,6 +46,9 @@ public class TestListener implements ITestListener {
 
     private final GroupStatistics overallStatistics =
             new GroupStatistics();
+
+    private static final AtomicBoolean executionFinished =
+            new AtomicBoolean(false);
 
     private final double approvalThreshold =
             Double.parseDouble(
@@ -89,6 +98,8 @@ public class TestListener implements ITestListener {
             // Reporte normal del error
             reportHelper.safeFail(getTest(), result.getThrowable());
 
+            adjuntarCapturaEnFallo(result);
+
             // Registrar resultado
             registerOverallResult("FAILED");
             registerResult(result, "FAILED");
@@ -135,6 +146,20 @@ public class TestListener implements ITestListener {
 
     @Override
     public void onFinish(ITestContext context) {
+        ContextManager.removeContext();
+    }
+
+    @Override
+    public void onExecutionStart() {
+        // No-op.
+    }
+
+    @Override
+    public void onExecutionFinish() {
+        if (!executionFinished.compareAndSet(false, true)) {
+            return;
+        }
+
         String veredictoFinal = obtenerVeredictoFinal();
         try {
             generarResumenFinal();
@@ -266,7 +291,6 @@ public class TestListener implements ITestListener {
     private void generarResumenFinal() {
         String resumenMarkdown = construirResumenMarkdown();
         escribirResumenEnArchivo(resumenMarkdown);
-        registrarResumenEnExtent(construirResumenHtml(), resumenMarkdown);
     }
 
     private void registrarResumenEnExtent(String resumenHtml, String resumenMarkdown) {
@@ -286,34 +310,35 @@ public class TestListener implements ITestListener {
     }
 
     private void aplicarResumenAExtent() {
+        extent.setSystemInfo("Resumen Final", " ");
         extent.setSystemInfo(
-                "Overall Approval",
+                "Resumen Final - Overall Approval",
                 formatearPorcentaje(overallStatistics.getApprovalPercentage())
         );
         extent.setSystemInfo(
-                "Overall Passed",
+                "Resumen Final - Overall Passed",
                 String.valueOf(overallStatistics.getPassed())
         );
         extent.setSystemInfo(
-                "Overall Failed",
+                "Resumen Final - Overall Failed",
                 String.valueOf(overallStatistics.getFailed())
         );
         extent.setSystemInfo(
-                "Overall Skipped",
+                "Resumen Final - Overall Skipped",
                 String.valueOf(overallStatistics.getSkipped())
         );
         extent.setSystemInfo(
-                "Approval Threshold",
+                "Resumen Final - Approval Threshold",
                 formatearPorcentaje(approvalThreshold)
         );
         extent.setSystemInfo(
-                "Final Verdict",
+                "Resumen Final - Final Verdict",
                 obtenerVeredictoFinal()
         );
 
         groupStatistics.forEach((group, statistics) -> {
             extent.setSystemInfo(
-                    "Approval " + group,
+                    "Resumen Final - Approval " + group,
                     formatearPorcentaje(statistics.getApprovalPercentage())
             );
         });
@@ -321,7 +346,11 @@ public class TestListener implements ITestListener {
 
     private void escribirResumenEnArchivo(String resumenMarkdown) {
         try {
-            Path carpeta = Paths.get("reports", "summary");
+            Path carpeta = Paths.get(
+                    "reports",
+                    "summary",
+                    System.getProperty("report.scope", "business")
+            );
             Files.createDirectories(carpeta);
 
             String timestamp = ZonedDateTime.now()
@@ -538,6 +567,39 @@ public class TestListener implements ITestListener {
                 .append(":</b> ")
                 .append(escaparHtml(valorSeguro(valor)))
                 .append("</li>");
+    }
+
+    private void adjuntarCapturaEnFallo(ITestResult result) {
+        try {
+            if (getTest() == null) {
+                return;
+            }
+
+            if (!(driverFactory.getCurrentDriver() instanceof TakesScreenshot)) {
+                reportHelper.safeWarning(
+                        getTest(),
+                        "No fue posible adjuntar captura: el driver no soporta screenshots"
+                );
+                return;
+            }
+
+            byte[] screenshot =
+                    ((TakesScreenshot) driverFactory.getCurrentDriver())
+                            .getScreenshotAs(OutputType.BYTES);
+
+            String base64 =
+                    java.util.Base64.getEncoder().encodeToString(screenshot);
+
+            getTest().fail(
+                    "Captura de pantalla al fallar: " + result.getMethod().getMethodName(),
+                    MediaEntityBuilder.createScreenCaptureFromBase64String(base64).build()
+            );
+        } catch (Exception e) {
+            reportHelper.safeWarning(
+                    getTest(),
+                    "No fue posible adjuntar captura de fallo: " + e.getMessage()
+            );
+        }
     }
 
     private String valorSeguro(String valor) {
