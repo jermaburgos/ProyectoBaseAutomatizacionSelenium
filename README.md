@@ -269,6 +269,11 @@ El workflow está en `.github/workflows/automation.yml` y expone `inputs` para e
 - `pull_request` hacia `main`
 - ejecución manual con `workflow_dispatch`
 
+### Orden de ejecución
+
+1. `unit-tests`
+2. `smoke` o `regression`, según el input manual o el disparador automático
+
 ### Inputs manuales
 
 Cuando ejecutas el workflow manualmente puedes definir:
@@ -289,6 +294,7 @@ approval_threshold: 95
 
 ### Comportamiento
 
+- Las pruebas unitarias se ejecutan primero en todos los casos.
 - Si eliges `smoke`, el workflow ejecuta solo smoke.
 - Si eliges `regression`, el workflow ejecuta solo regression.
 - En `push` y `pull_request`, el workflow mantiene el comportamiento automático.
