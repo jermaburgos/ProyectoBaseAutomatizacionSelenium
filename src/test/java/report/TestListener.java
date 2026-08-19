@@ -1,9 +1,13 @@
 package report;
 
 import ai.FailureContext;
+import com.aventstack.extentreports.MediaEntityBuilder;
 import com.aventstack.extentreports.ExtentTest;
 import context.ContextManager;
+import driver.driverFactory;
 import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.testng.ITestContext;
 import org.testng.IExecutionListener;
 import org.testng.ITestListener;
@@ -93,6 +97,8 @@ public class TestListener implements ITestListener, IExecutionListener {
 
             // Reporte normal del error
             reportHelper.safeFail(getTest(), result.getThrowable());
+
+            adjuntarCapturaEnFallo(result);
 
             // Registrar resultado
             registerOverallResult("FAILED");
@@ -561,6 +567,39 @@ public class TestListener implements ITestListener, IExecutionListener {
                 .append(":</b> ")
                 .append(escaparHtml(valorSeguro(valor)))
                 .append("</li>");
+    }
+
+    private void adjuntarCapturaEnFallo(ITestResult result) {
+        try {
+            if (getTest() == null) {
+                return;
+            }
+
+            if (!(driverFactory.getCurrentDriver() instanceof TakesScreenshot)) {
+                reportHelper.safeWarning(
+                        getTest(),
+                        "No fue posible adjuntar captura: el driver no soporta screenshots"
+                );
+                return;
+            }
+
+            byte[] screenshot =
+                    ((TakesScreenshot) driverFactory.getCurrentDriver())
+                            .getScreenshotAs(OutputType.BYTES);
+
+            String base64 =
+                    java.util.Base64.getEncoder().encodeToString(screenshot);
+
+            getTest().fail(
+                    "Captura de pantalla al fallar: " + result.getMethod().getMethodName(),
+                    MediaEntityBuilder.createScreenCaptureFromBase64String(base64).build()
+            );
+        } catch (Exception e) {
+            reportHelper.safeWarning(
+                    getTest(),
+                    "No fue posible adjuntar captura de fallo: " + e.getMessage()
+            );
+        }
     }
 
     private String valorSeguro(String valor) {
