@@ -3,6 +3,7 @@ package test;
 import base.baseInicializacion;
 import org.testng.annotations.BeforeMethod;
 import page.page_Home;
+import page.page_monitors;
 import page.page_components;
 import page.page_cart;
 import page.page_cameras;
@@ -18,6 +19,7 @@ public class baseTest extends baseInicializacion {
     protected ExtentManager report;
     protected page_cart cart;
     protected page_cameras cameras;
+    protected page_monitors monitors;
 
 
     @BeforeMethod(alwaysRun = true)
@@ -29,6 +31,7 @@ public class baseTest extends baseInicializacion {
         components = new page_components(driver);
         cart = new page_cart(driver);
         cameras = new page_cameras(driver);
+        monitors = new page_monitors(driver);
         report = new ExtentManager();
     }
 }

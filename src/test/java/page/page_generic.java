@@ -9,7 +9,15 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.Assert;
 import report.TestListener;
 
+import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,6 +68,7 @@ public class page_generic {
         validarLocator(locator);
         TestListener.step("Clicking on element located by: " + locator.toString(),locator);
         wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
+        cerrarVentanaArchivos();
     }
 
     public void hoverElement(By locator) {
@@ -77,6 +86,86 @@ public class page_generic {
         );
         WebElement element = esperarElementoVisible(locator);
         new Select(element).selectByVisibleText(visibleText);
+    }
+
+    public void selectElementContainingText(By locator, String visibleText) {
+        validarLocator(locator);
+        TestListener.step(
+                "Selecting option containing '" + visibleText + "' from element located by: " + locator.toString(),
+                locator
+        );
+
+        WebElement element = esperarElementoVisible(locator);
+        Select select = new Select(element);
+        String visibleTextNormalized = visibleText.trim().toLowerCase();
+
+        for (WebElement option : select.getOptions()) {
+            String optionText = option.getText().trim().toLowerCase();
+            if (optionText.contains(visibleTextNormalized)) {
+                option.click();
+                return;
+            }
+        }
+
+        throw new NoSuchElementException(
+                "No se encontró una opción que contenga el texto: " + visibleText
+        );
+    }
+
+    public void writeElement(By locator, String text) {
+        validarLocator(locator);
+        TestListener.step("Writing text '" + text + "' in element located by: " + locator.toString(), locator);
+        WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+        element.clear();
+        element.sendKeys(text);
+    }
+
+    public void uploadFile(By locator, String filePath) {
+        validarLocator(locator);
+
+        Path path = Paths.get(filePath).toAbsolutePath().normalize();
+        TestListener.step("Uploading file '" + path + "' in element located by: " + locator.toString(), locator);
+
+        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+        element.sendKeys(path.toString());
+    }
+
+    public void ingresarFechaActual(By locator) {
+        String fecha = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        ejecutarPaso("Ingresar fecha actual: " + fecha, () ->
+                writeElement(locator, fecha)
+        );
+    }
+
+    public void ingresarHoraActual(By locator) {
+        String hora = LocalTime.now()
+                .withSecond(0)
+                .withNano(0)
+                .format(DateTimeFormatter.ofPattern("HH:mm"));
+
+        ejecutarPaso("Ingresar hora actual: " + hora, () ->
+                writeElement(locator, hora)
+        );
+    }
+
+    public void ingresarFechaHoraActual(By locator) {
+        String fechaHora = LocalDateTime.now()
+                .withSecond(0)
+                .withNano(0)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
+
+        ejecutarPaso("Ingresar fecha y hora actual: " + fechaHora, () ->
+                writeElement(locator, fechaHora)
+        );
+    }
+
+    public void aceptarAlertaSiExiste() {
+        try {
+            wait.until(ExpectedConditions.alertIsPresent()).accept();
+            TestListener.step("Alerta aceptada correctamente");
+        } catch (TimeoutException e) {
+            TestListener.step("No se detectó alerta para aceptar");
+        }
     }
 
     public String getTextElement(By locator) {
@@ -114,7 +203,7 @@ public class page_generic {
             tomarCaptura(nombre + "_DESPUES");
 
             TestListener.step(
-                    "Paso ejecutado correctamente: " + nombre
+                    "<div style='font-weight:600; font-size:14px; color:#029e25'>"+"\u2713 Paso ejecutado correctamente: " + nombre +"</div>"
             );
 
         } catch (Exception e) {
@@ -123,7 +212,7 @@ public class page_generic {
 
             if (TestListener.getTest() != null) {
                 TestListener.getTest()
-                        .fail("Error en paso: " + nombre);
+                        .fail("<div style='font-weight:600; font-size:14px; color:#ad0909'>\u2717 Error en paso: " + nombre + "</div>");
             } else {
                 System.out.println("Error en paso: " + nombre);
             }
@@ -189,6 +278,21 @@ public class page_generic {
         if (locator == null) {
             throw new IllegalArgumentException(
                     "El locator no puede ser null"
+            );
+        }
+    }
+    public void cerrarVentanaArchivos() {
+        try {
+            Robot robot = new Robot();
+
+            robot.delay(500);
+            robot.keyPress(KeyEvent.VK_ESCAPE);
+            robot.keyRelease(KeyEvent.VK_ESCAPE);
+
+        } catch (AWTException e) {
+            throw new RuntimeException(
+                    "No se pudo cerrar el selector de archivos",
+                    e
             );
         }
     }

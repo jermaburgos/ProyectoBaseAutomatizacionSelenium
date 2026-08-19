@@ -45,7 +45,7 @@ El proyecto utiliza:
 - Mantener los nombres y convenciones existentes del proyecto.
 - Si existe un método genérico que cumpla la misma función, reutilizarlo en lugar de crear uno nuevo o modificarlo.
 - Si se requiere modificar un método genérico existente, primero presentar la propuesta de modificación y esperar aprobación antes de implementarla.
-
+- Sí hay metodos que se pueden reutilizar en diferentes test, se deben agregar al page_generic
 ## Page Object Model
 
 Antes de crear una Page nueva:

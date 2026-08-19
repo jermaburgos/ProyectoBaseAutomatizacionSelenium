@@ -1,0 +1,86 @@
+name: QA Automation
+
+on:
+  push:
+    branches: [main, develop]
+
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Suite a ejecutar"
+        required: true
+        default: "smoke"
+        type: choice
+        options:
+          - smoke
+          - regression
+
+jobs:
+
+  smoke:
+    name: Smoke Tests
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar Smoke
+        run: |
+          mvn clean test \
+            -Dgroups=smoke \
+            -Dbrowser=chrome \
+            -Dheadless=true
+
+      - name: Reporte Smoke
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: |
+            reports/
+            target/surefire-reports/
+
+
+  regression:
+    name: Regression Tests
+
+    needs: smoke
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Ejecutar Regression
+        run: |
+          mvn clean test \
+            -Dgroups=regression \
+            -Dbrowser=chrome \
+            -Dheadless=true
+
+      - name: Reporte Regression
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: |
+            reports/
+            target/surefire-reports/

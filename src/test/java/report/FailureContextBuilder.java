@@ -11,25 +11,22 @@ public class FailureContextBuilder {
     public FailureContext build(ITestResult result) {
         FailureContext failure = new FailureContext();
 
-        failure.setTestName(result.getMethod().getMethodName());
-        failure.setClassName(result.getTestClass().getName());
-        failure.setBrowser(System.getProperty("browser", "chrome"));
+        failure.setTestName(valorSeguro(result.getMethod().getMethodName()));
+        failure.setClassName(valorSeguro(result.getTestClass().getName()));
+        failure.setBrowser(valorSeguro(System.getProperty("browser", "chrome")));
 
         Throwable throwable = result.getThrowable();
         if (throwable != null) {
-            failure.setError(
-                    throwable.getClass().getSimpleName()
-                            + ": "
-                            + limitarTexto(throwable.getMessage(), 1000)
-            );
-            failure.setStackTrace(
-                    obtenerStackTraceLimitado(throwable, 10)
-            );
+            failure.setError(construirErrorResumen(throwable));
+            failure.setStackTrace(obtenerStackTraceLimitado(throwable, 10));
+        } else {
+            failure.setError("No se registró excepción");
+            failure.setStackTrace("No stack trace disponible");
         }
 
-        failure.setUltimoPaso(ContextManager.getContext().getUltimoPaso());
-        failure.setLocator(ContextManager.getContext().getUltimoLocator());
-        failure.setUrl(obtenerUrlActual());
+        failure.setUltimoPaso(valorSeguro(ContextManager.getContext().getUltimoPaso()));
+        failure.setLocator(valorSeguro(ContextManager.getContext().getUltimoLocator()));
+        failure.setUrl(valorSeguro(obtenerUrlActual()));
 
         return failure;
     }
@@ -70,5 +67,23 @@ public class FailureContextBuilder {
         }
 
         return texto.substring(0, maximo) + "...";
+    }
+
+    private String construirErrorResumen(Throwable throwable) {
+        String mensaje = limitarTexto(throwable.getMessage(), 1000);
+
+        if (mensaje.isBlank()) {
+            return throwable.getClass().getSimpleName();
+        }
+
+        return throwable.getClass().getSimpleName() + ": " + mensaje;
+    }
+
+    private String valorSeguro(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return "N/A";
+        }
+
+        return valor;
     }
 }

@@ -2,6 +2,8 @@ package report;
 
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.reporter.ExtentSparkReporter;
+import com.aventstack.extentreports.reporter.configuration.Theme;
+import com.aventstack.extentreports.reporter.configuration.ViewName;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -45,14 +47,60 @@ public class ExtentManager {
     }
 
     private static ExtentSparkReporter crearReporter(Path reportsDir) {
-        String fechaFormateada = formatearFechaActual();
-        return new ExtentSparkReporter(
-                reportsDir.resolve(
-                        "AutomationReport" + fechaFormateada + ".html"
-                ).toString()
-        );
-    }
+        String fechaFormateada =
+                formatearFechaActual();
 
+        Path rutaReporte =
+                reportsDir.resolve(
+                        "AutomationReport"
+                                + fechaFormateada
+                                + ".html"
+                );
+
+        ExtentSparkReporter spark =
+                new ExtentSparkReporter(
+                        rutaReporte.toString()
+                );
+
+        configurarReporter(spark);
+
+        return spark;
+        }
+
+    private static void configurarReporter(
+            ExtentSparkReporter spark) {
+
+        spark.config().setDocumentTitle(
+                "Reporte de Automatización"
+        );
+
+        spark.config().setReportName(
+                "Ejecución Selenium + TestNG"
+        );
+
+        spark.config().setTheme(
+                Theme.STANDARD
+        );
+
+        spark.config().setEncoding(
+                "UTF-8"
+        );
+
+        spark.config().setTimeStampFormat(
+                "dd-MM-yyyy HH:mm:ss"
+        );
+
+        spark.viewConfigurer()
+                .viewOrder()
+                .as(new ViewName[]{
+                        ViewName.DASHBOARD,
+                        ViewName.TEST,
+                        ViewName.CATEGORY,
+                        ViewName.EXCEPTION,
+                        ViewName.LOG
+                })
+                .apply();
+    }
     private static void configurarSistema() {
         extent.setSystemInfo("Proyecto", "Automation Testing");
         extent.setSystemInfo("Framework", "Selenium + TestNG + ExtentReports");

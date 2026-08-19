@@ -38,4 +38,22 @@ public class GroupStatistics {
     public int getSkipped() {
         return skipped;
     }
+
+    public int getExecuted() {
+        return passed + failed;
+    }
+
+    public double getApprovalPercentage() {
+        int executed = getExecuted();
+
+        if (executed == 0) {
+            return 0.0;
+        }
+
+        return (passed * 100.0) / executed;
+    }
+
+    public boolean isApproved(double threshold) {
+        return getApprovalPercentage() >= threshold;
+    }
 }

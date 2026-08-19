@@ -1,5 +1,6 @@
 package report;
 
+import ai.FailureContext;
 import com.aventstack.extentreports.ExtentTest;
 import context.ContextManager;
 import org.openqa.selenium.By;
@@ -8,6 +9,16 @@ import org.testng.ITestListener;
 import com.aventstack.extentreports.ExtentReports;
 import org.testng.ITestResult;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -27,12 +38,21 @@ public class TestListener implements ITestListener {
     private final Map<String, GroupStatistics> groupStatistics =
             new ConcurrentHashMap<>();
 
+    private final GroupStatistics overallStatistics =
+            new GroupStatistics();
+
+    private final double approvalThreshold =
+            Double.parseDouble(
+                    System.getProperty("approval.threshold", "95")
+            );
+
     @Override
     public void onTestStart(ITestResult result) {
         try {
             ExtentTest extentTest =
                     extent.createTest(
-                            result.getMethod().getMethodName()
+                            result.getMethod().getMethodName(),
+                            result.getTestClass().getName()
                     );
 
             // Obtener grupos de TestNG
@@ -55,8 +75,9 @@ public class TestListener implements ITestListener {
 
     @Override
     public void onTestSuccess(ITestResult result) {
-        reportHelper.safePass(getTest(), "Prueba ejecutada correctamente");
+        reportHelper.safePass(getTest(), "Resultado: PASSED");
 
+        registerOverallResult("PASSED");
         registerResult(result, "PASSED");
         ContextManager.removeContext();
     }
@@ -69,11 +90,17 @@ public class TestListener implements ITestListener {
             reportHelper.safeFail(getTest(), result.getThrowable());
 
             // Registrar resultado
+            registerOverallResult("FAILED");
             registerResult(result, "FAILED");
 
             // Construir contexto para IA
-            ai.FailureContext failure =
+            FailureContext failure =
                     failureContextBuilder.build(result);
+
+            reportHelper.safeInfo(
+                    getTest(),
+                    construirBloqueDiagnostico(failure)
+            );
 
             // Llamada a IA, protegida para que nunca rompa el listener
             try {
@@ -81,8 +108,8 @@ public class TestListener implements ITestListener {
 
                 reportHelper.safeInfo(
                         getTest(),
-                        "<b>🤖 ANÁLISIS IA</b><br><pre>"
-                                + analisisIA
+                        "<b>\uD83E\uDD16 ANÁLISIS IA</b><br><pre>"
+                                + escaparHtml(analisisIA)
                                 + "</pre>"
                 );
             } catch (Exception e) {
@@ -101,13 +128,18 @@ public class TestListener implements ITestListener {
     public void onTestSkipped(ITestResult result) {
         reportHelper.safeSkip(getTest(), "Prueba omitida");
 
+        registerOverallResult("SKIPPED");
         registerResult(result, "SKIPPED");
         ContextManager.removeContext();
     }
 
     @Override
     public void onFinish(ITestContext context) {
+        String veredictoFinal = obtenerVeredictoFinal();
         try {
+            generarResumenFinal();
+            aplicarResumenAExtent();
+            registrarVeredictoFinal();
             extent.flush();
         } catch (Exception e) {
             System.out.println(
@@ -117,6 +149,16 @@ public class TestListener implements ITestListener {
         }
 
         generateGroupReport();
+        generateOverallReport();
+
+        if (!"APROBADO".equals(veredictoFinal)) {
+            throw new IllegalStateException(
+                    "La ejecucion no alcanzo el umbral de aprobacion configurado: "
+                            + formatearPorcentaje(approvalThreshold)
+                            + ". Veredicto: "
+                            + veredictoFinal
+            );
+        }
     }
 
     public static void setTest(ExtentTest extentTest) {
@@ -203,9 +245,232 @@ public class TestListener implements ITestListener {
                             " | Total: " + statistics.getTotal() +
                             " | Passed: " + statistics.getPassed() +
                             " | Failed: " + statistics.getFailed() +
-                            " | Skipped: " + statistics.getSkipped()
+                            " | Skipped: " + statistics.getSkipped() +
+                            " | Approval: " + formatearPorcentaje(statistics.getApprovalPercentage())
             );
         });
+    }
+
+    private void generateOverallReport() {
+        System.out.println(
+                "OVERALL" +
+                        " | Total: " + overallStatistics.getTotal() +
+                        " | Passed: " + overallStatistics.getPassed() +
+                        " | Failed: " + overallStatistics.getFailed() +
+                        " | Skipped: " + overallStatistics.getSkipped() +
+                        " | Approval: " + formatearPorcentaje(overallStatistics.getApprovalPercentage()) +
+                        " | Verdict: " + obtenerVeredictoFinal()
+        );
+    }
+
+    private void generarResumenFinal() {
+        String resumenMarkdown = construirResumenMarkdown();
+        escribirResumenEnArchivo(resumenMarkdown);
+        registrarResumenEnExtent(construirResumenHtml(), resumenMarkdown);
+    }
+
+    private void registrarResumenEnExtent(String resumenHtml, String resumenMarkdown) {
+        try {
+            ExtentTest resumen = extent.createTest("Resumen final");
+            resumen.assignCategory("summary");
+            resumen.info(resumenHtml);
+            resumen.info("<details><summary>Versión Markdown</summary><pre>"
+                    + escaparHtml(resumenMarkdown)
+                    + "</pre></details>");
+        } catch (Exception e) {
+            System.out.println(
+                    "No fue posible registrar el resumen en Extent: "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    private void aplicarResumenAExtent() {
+        extent.setSystemInfo(
+                "Overall Approval",
+                formatearPorcentaje(overallStatistics.getApprovalPercentage())
+        );
+        extent.setSystemInfo(
+                "Overall Passed",
+                String.valueOf(overallStatistics.getPassed())
+        );
+        extent.setSystemInfo(
+                "Overall Failed",
+                String.valueOf(overallStatistics.getFailed())
+        );
+        extent.setSystemInfo(
+                "Overall Skipped",
+                String.valueOf(overallStatistics.getSkipped())
+        );
+        extent.setSystemInfo(
+                "Approval Threshold",
+                formatearPorcentaje(approvalThreshold)
+        );
+        extent.setSystemInfo(
+                "Final Verdict",
+                obtenerVeredictoFinal()
+        );
+
+        groupStatistics.forEach((group, statistics) -> {
+            extent.setSystemInfo(
+                    "Approval " + group,
+                    formatearPorcentaje(statistics.getApprovalPercentage())
+            );
+        });
+    }
+
+    private void escribirResumenEnArchivo(String resumenMarkdown) {
+        try {
+            Path carpeta = Paths.get("reports", "summary");
+            Files.createDirectories(carpeta);
+
+            String timestamp = ZonedDateTime.now()
+                    .format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+
+            Path archivo = carpeta.resolve("TestSummary" + timestamp + ".md");
+            Files.writeString(archivo, resumenMarkdown);
+
+            System.out.println(
+                    "Resumen final guardado en: "
+                            + archivo.toAbsolutePath()
+            );
+        } catch (IOException e) {
+            System.out.println(
+                    "No fue posible guardar el resumen final: "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    private String construirResumenMarkdown() {
+        StringBuilder markdown = new StringBuilder();
+
+        markdown.append("# Resumen Final\n\n");
+        markdown.append("## Global\n");
+        markdown.append("- Total: ").append(overallStatistics.getTotal()).append("\n");
+        markdown.append("- Passed: ").append(overallStatistics.getPassed()).append("\n");
+        markdown.append("- Failed: ").append(overallStatistics.getFailed()).append("\n");
+        markdown.append("- Skipped: ").append(overallStatistics.getSkipped()).append("\n");
+        markdown.append("- Approval: ").append(formatearPorcentaje(overallStatistics.getApprovalPercentage())).append("\n\n");
+
+        markdown.append("## Por Grupo\n");
+        if (groupStatistics.isEmpty()) {
+            markdown.append("- Sin datos.\n");
+        } else {
+            List<Map.Entry<String, GroupStatistics>> entries = new ArrayList<>(groupStatistics.entrySet());
+            entries.sort(Comparator.comparing(Map.Entry::getKey));
+
+            for (Map.Entry<String, GroupStatistics> entry : entries) {
+                GroupStatistics statistics = entry.getValue();
+                markdown.append("- ").append(entry.getKey()).append("\n");
+                markdown.append("  - Total: ").append(statistics.getTotal()).append("\n");
+                markdown.append("  - Passed: ").append(statistics.getPassed()).append("\n");
+                markdown.append("  - Failed: ").append(statistics.getFailed()).append("\n");
+                markdown.append("  - Skipped: ").append(statistics.getSkipped()).append("\n");
+                markdown.append("  - Approval: ").append(formatearPorcentaje(statistics.getApprovalPercentage())).append("\n");
+            }
+        }
+
+        markdown.append("\n## Criterio de Aprobacion\n");
+        markdown.append("- Passed/(Passed+Failed) * 100\n");
+        markdown.append("- Skipped no se incluye en el porcentaje de aprobacion\n");
+        markdown.append("- Threshold: ").append(formatearPorcentaje(approvalThreshold)).append("\n");
+        markdown.append("- Verdict: ").append(obtenerVeredictoFinal()).append("\n");
+
+        return markdown.toString();
+    }
+
+    private String construirResumenHtml() {
+        StringBuilder html = new StringBuilder();
+
+        html.append("<h2>Resumen de ejecución</h2>");
+        html.append("<table style='border-collapse:collapse;width:100%;'>");
+        html.append("<tr><th style='text-align:left;padding:6px;'>Métrica</th>");
+        html.append("<th style='text-align:left;padding:6px;'>Valor</th></tr>");
+        agregarFilaHtml(html, "Total", String.valueOf(overallStatistics.getTotal()));
+        agregarFilaHtml(html, "Passed", String.valueOf(overallStatistics.getPassed()));
+        agregarFilaHtml(html, "Failed", String.valueOf(overallStatistics.getFailed()));
+        agregarFilaHtml(html, "Skipped", String.valueOf(overallStatistics.getSkipped()));
+        agregarFilaHtml(html, "Approval", formatearPorcentaje(overallStatistics.getApprovalPercentage()));
+        agregarFilaHtml(html, "Threshold", formatearPorcentaje(approvalThreshold));
+        agregarFilaHtml(html, "Verdict", obtenerVeredictoFinal());
+        html.append("</table>");
+
+        html.append("<h3>Por Grupo</h3>");
+        if (groupStatistics.isEmpty()) {
+            html.append("<p>Sin datos.</p>");
+        } else {
+            List<Map.Entry<String, GroupStatistics>> entries = new ArrayList<>(groupStatistics.entrySet());
+            entries.sort(Comparator.comparing(Map.Entry::getKey));
+
+            html.append("<ul>");
+            for (Map.Entry<String, GroupStatistics> entry : entries) {
+                GroupStatistics statistics = entry.getValue();
+                html.append("<li><b>")
+                        .append(escaparHtml(entry.getKey()))
+                        .append("</b>: ")
+                        .append("Total ")
+                        .append(statistics.getTotal())
+                        .append(", Passed ")
+                        .append(statistics.getPassed())
+                        .append(", Failed ")
+                        .append(statistics.getFailed())
+                        .append(", Skipped ")
+                        .append(statistics.getSkipped())
+                        .append(", Approval ")
+                        .append(formatearPorcentaje(statistics.getApprovalPercentage()))
+                        .append("</li>");
+            }
+            html.append("</ul>");
+        }
+
+        return html.toString();
+    }
+
+    private void agregarFilaHtml(StringBuilder html, String etiqueta, String valor) {
+        html.append("<tr>")
+                .append("<td style='padding:6px;border-top:1px solid #ddd;'>")
+                .append(escaparHtml(etiqueta))
+                .append("</td>")
+                .append("<td style='padding:6px;border-top:1px solid #ddd;'>")
+                .append(escaparHtml(valor))
+                .append("</td>")
+                .append("</tr>");
+    }
+
+    private void registerOverallResult(String status) {
+        overallStatistics.incrementTotal();
+
+        switch (status) {
+            case "PASSED":
+                overallStatistics.incrementPassed();
+                break;
+            case "FAILED":
+                overallStatistics.incrementFailed();
+                break;
+            case "SKIPPED":
+                overallStatistics.incrementSkipped();
+                break;
+        }
+    }
+
+    private void registrarVeredictoFinal() {
+        String veredicto = obtenerVeredictoFinal();
+        System.out.println("FINAL VERDICT | " + veredicto);
+    }
+
+    private String obtenerVeredictoFinal() {
+        if (overallStatistics.getExecuted() == 0) {
+            return "NO APROBADO";
+        }
+
+        return overallStatistics.isApproved(approvalThreshold)
+                ? "APROBADO"
+                : "NO APROBADO";
+    }
+
+    private String formatearPorcentaje(double porcentaje) {
+        return String.format(Locale.US, "%.2f%%", porcentaje);
     }
 
     private String obtenerStackTraceLimitado(
@@ -247,4 +512,52 @@ public class TestListener implements ITestListener {
                 + "...";
     }
 
+    private String construirBloqueDiagnostico(FailureContext failure) {
+        StringBuilder html = new StringBuilder();
+
+        html.append("<b>DIAGNOSTICO DEL FALLO</b><br>");
+        html.append("<ul>");
+        agregarItem(html, "Test", failure.getTestName());
+        agregarItem(html, "Clase", failure.getClassName());
+        agregarItem(html, "Browser", failure.getBrowser());
+        agregarItem(html, "URL", failure.getUrl());
+        agregarItem(html, "Ultimo paso", failure.getUltimoPaso());
+        agregarItem(html, "Locator", failure.getLocator());
+        agregarItem(html, "Error", failure.getError());
+        html.append("</ul>");
+        html.append("<b>Stack trace corto</b><br><pre>");
+        html.append(escaparHtml(limitarTexto(failure.getStackTrace(), 1500)));
+        html.append("</pre>");
+
+        return html.toString();
+    }
+
+    private void agregarItem(StringBuilder html, String etiqueta, String valor) {
+        html.append("<li><b>")
+                .append(escaparHtml(etiqueta))
+                .append(":</b> ")
+                .append(escaparHtml(valorSeguro(valor)))
+                .append("</li>");
+    }
+
+    private String valorSeguro(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return "N/A";
+        }
+
+        return valor;
+    }
+
+    private String escaparHtml(String texto) {
+        if (texto == null) {
+            return "";
+        }
+
+        return texto
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
 }
