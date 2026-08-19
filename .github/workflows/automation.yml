@@ -87,6 +87,7 @@ jobs:
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${APPROVAL_THRESHOLD}
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Smoke
         if: always()
@@ -127,6 +128,7 @@ jobs:
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${APPROVAL_THRESHOLD}
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
 
       - name: Reporte Regression
         if: always()

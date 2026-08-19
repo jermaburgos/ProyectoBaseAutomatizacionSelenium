@@ -68,7 +68,7 @@ public class page_generic {
         validarLocator(locator);
         TestListener.step("Clicking on element located by: " + locator.toString(),locator);
         wait.until(ExpectedConditions.elementToBeClickable(locator)).click();
-        cerrarVentanaArchivos();
+
     }
 
     public void hoverElement(By locator) {
@@ -121,6 +121,7 @@ public class page_generic {
     }
 
     public void uploadFile(By locator, String filePath) {
+        cerrarVentanaArchivos();
         validarLocator(locator);
 
         Path path = Paths.get(filePath).toAbsolutePath().normalize();
