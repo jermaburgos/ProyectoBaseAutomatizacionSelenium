@@ -106,14 +106,6 @@ jobs:
               exit 1
             fi
 
-      - name: Reporte Smoke
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: smoke-report
-          path: |
-            reports/business/
-
   regression:
     environment: qa
     name: Regression Tests
@@ -165,11 +157,3 @@ jobs:
               echo "Pipeline no aprobado según threshold"
               exit 1
             fi
-
-      - name: Reporte Regression
-        if: always()
-        uses: actions/upload-artifact@v5
-        with:
-          name: regression-report
-          path: |
-            reports/business/
