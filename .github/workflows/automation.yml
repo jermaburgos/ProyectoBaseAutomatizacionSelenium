@@ -52,13 +52,11 @@ jobs:
 
       - name: Reporte Unit Tests
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: unit-report
           path: |
             reports/unit/
-            reports/summary/unit/
-            target/surefire-reports/
 
   smoke:
     environment: qa
@@ -94,14 +92,11 @@ jobs:
 
       - name: Reporte Smoke
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: smoke-report
           path: |
             reports/business/
-            reports/summary/business/
-            target/surefire-reports/
-
 
   regression:
     environment: qa
@@ -136,10 +131,8 @@ jobs:
 
       - name: Reporte Regression
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: regression-report
           path: |
             reports/business/
-            reports/summary/business/
-            target/surefire-reports/
