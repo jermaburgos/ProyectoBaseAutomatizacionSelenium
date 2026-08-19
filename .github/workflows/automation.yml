@@ -81,7 +81,30 @@ jobs:
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
-            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }} \
+            -Dmaven.test.failure.ignore=true
+            
+      - name: Reporte Smoke
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report
+          path: |
+            reports/business/
+            
+      - name: Validar umbral de aprobación
+        run: |
+            SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
+        
+            echo "Validando reporte: $SUMMARY"
+        
+            if grep -q "Verdict: APROBADO" "$SUMMARY"; then
+              echo "Pipeline aprobado según threshold"
+              exit 0
+            else
+              echo "Pipeline no aprobado según threshold"
+              exit 1
+            fi
 
       - name: Reporte Smoke
         if: always()
@@ -118,7 +141,30 @@ jobs:
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
-            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }}
+            -Dopenai.apikey=${{ secrets.OPENAI_API_KEY }} \
+            -Dmaven.test.failure.ignore=true
+
+      - name: Reporte Regression
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: regression-report
+          path: |
+            reports/business/
+            
+      - name: Validar umbral de aprobación
+        run: |
+            SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
+        
+            echo "Validando reporte: $SUMMARY"
+        
+            if grep -q "Verdict: APROBADO" "$SUMMARY"; then
+              echo "Pipeline aprobado según threshold"
+              exit 0
+            else
+              echo "Pipeline no aprobado según threshold"
+              exit 1
+            fi
 
       - name: Reporte Regression
         if: always()
