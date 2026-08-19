@@ -21,6 +21,7 @@ on:
 jobs:
 
   unit-tests:
+    environment: qa
     name: Unit Tests
 
     runs-on: ubuntu-latest
@@ -43,7 +44,7 @@ jobs:
             -Dbrowser=chrome \
             -Dheadless=true \
             -Dreport.scope=unit \
-            -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TESTUNIT}} \
+            -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TESTUNIT}}
 
       - name: Reporte Unit Tests
         if: always()
