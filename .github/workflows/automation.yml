@@ -40,8 +40,8 @@ jobs:
         run: |
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng-unit.xml \
-            -Dscreenshots=true \
-            -Dbrowser=chrome \
+            -Dscreenshots=${{ secrets.SCREENSHOT}} \
+            -Dbrowser=${{ secrets.BROWSER}} \
             -Dheadless=true \
             -Dreport.scope=unit \
             -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TESTUNIT}}
@@ -76,8 +76,8 @@ jobs:
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=smoke \
-            -Dscreenshots=true \
-            -Dbrowser=chrome \
+            -Dscreenshots=${{ secrets.SCREENSHOT}} \
+            -Dbrowser=${{ secrets.BROWSER}} \
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
@@ -129,7 +129,8 @@ jobs:
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=regression \
-            -Dbrowser=chrome \
+            -Dscreenshots=${{ secrets.SCREENSHOT}} \
+            -Dbrowser=${{ secrets.BROWSER}} \
             -Dheadless=true \
             -Dreport.scope=business \
             -Dapproval.threshold=${{ secrets.APPROVAL_THRESHOLD_TEST }} \
