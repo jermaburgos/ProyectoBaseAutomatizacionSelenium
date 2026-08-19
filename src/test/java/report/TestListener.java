@@ -5,6 +5,7 @@ import com.aventstack.extentreports.ExtentTest;
 import context.ContextManager;
 import org.openqa.selenium.By;
 import org.testng.ITestContext;
+import org.testng.IExecutionListener;
 import org.testng.ITestListener;
 import com.aventstack.extentreports.ExtentReports;
 import org.testng.ITestResult;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class TestListener implements ITestListener {
+public class TestListener implements ITestListener, IExecutionListener {
     private static ExtentReports extent =
             ExtentManager.getInstance();
 
@@ -135,6 +136,16 @@ public class TestListener implements ITestListener {
 
     @Override
     public void onFinish(ITestContext context) {
+        ContextManager.removeContext();
+    }
+
+    @Override
+    public void onExecutionStart() {
+        // No-op.
+    }
+
+    @Override
+    public void onExecutionFinish() {
         String veredictoFinal = obtenerVeredictoFinal();
         try {
             generarResumenFinal();

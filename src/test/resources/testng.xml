@@ -2,10 +2,6 @@
 
 <suite name="Automation Suite">
 
-    <listeners>
-        <listener class-name="report.TestListener"/>
-    </listeners>
-
     <test name="Regression">
         <groups>
             <run>
