@@ -23,7 +23,6 @@ jobs:
   unit-tests:
     environment: qa
     name: Unit Tests
-
     runs-on: ubuntu-latest
 
     steps:
@@ -38,25 +37,27 @@ jobs:
 
       - name: Ejecutar Unit Tests
         env:
-          APPROVAL_UNIT_TEST: ${{ secrets.APPROVAL_THRESHOLD_TESTUNIT}}
-          
+          APPROVAL_UNIT_TEST: ${{ secrets.APPROVAL_THRESHOLD_TESTUNIT }}
+          SCREENSHOT: ${{ secrets.SCREENSHOT }}
+          BROWSER: ${{ secrets.BROWSER }}
+
         run: |
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng-unit.xml \
-            -Dscreenshots=${{ secrets.SCREENSHOT}} \
-            -Dbrowser=${{ secrets.BROWSER}} \
+            -Dscreenshots="$SCREENSHOT" \
+            -Dbrowser="$BROWSER" \
             -Dheadless=true \
             -Dreport.scope=unit \
-            -Dapproval.threshold=${APPROVAL_UNIT_TES}
+            -Dapproval.threshold="$APPROVAL_UNIT_TEST"
 
       - name: Reporte Unit Tests
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: unit-report
-          path: |
-            reports/unit/
-            
+          path: reports/unit/
+
+
   sonarqube:
     name: SonarQube Cloud
     needs: unit-tests
@@ -79,14 +80,18 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.TOKEN_SONAR }}
         run: |
-          mvn sonar:sonar \
-            -Dsonar.token=${SONAR_TOKEN}
+          mvn clean verify sonar:sonar \
+            -DskipTests \
+            -Dsonar.token="$SONAR_TOKEN"
+
 
   smoke:
     environment: qa
     name: Smoke Tests
     needs: sonarqube
+
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'smoke'
+
     runs-on: ubuntu-latest
 
     steps:
@@ -101,49 +106,50 @@ jobs:
 
       - name: Ejecutar Smoke
         env:
-          SCREENSHOT: ${{ secrets.SCREENSHOT}}
-          BROWSER: ${{ secrets.BROWSER}}
+          SCREENSHOT: ${{ secrets.SCREENSHOT }}
+          BROWSER: ${{ secrets.BROWSER }}
           APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
-          APIKEY: ${{ secrets.OPENAI_API_KEY }} 
-          
+          APIKEY: ${{ secrets.OPENAI_API_KEY }}
+
         run: |
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=smoke \
-            -Dscreenshots=${SCREENSHOT} \
-            -Dbrowser=${BROWSER} \
+            -Dscreenshots="$SCREENSHOT" \
+            -Dbrowser="$BROWSER" \
             -Dheadless=true \
             -Dreport.scope=business \
-            -Dapproval.threshold=${APPROVAL_TEST} \
-            -Dopenai.apikey=${APIKEY} \
+            -Dapproval.threshold="$APPROVAL_TEST" \
+            -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true
-            
+
       - name: Reporte Smoke
         if: always()
         uses: actions/upload-artifact@v5
         with:
           name: smoke-report
-          path: |
-            reports/business/
-            
+          path: reports/business/
+
       - name: Validar umbral de aprobación
         run: |
-            SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
-        
-            echo "Validando reporte: $SUMMARY"
-        
-            if grep -q "Verdict: APROBADO" "$SUMMARY"; then
-              echo "Pipeline aprobado según threshold"
-              exit 0
-            else
-              echo "Pipeline no aprobado según threshold"
-              exit 1
-            fi
+          SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
+
+          echo "Validando reporte: $SUMMARY"
+
+          if grep -q "Verdict: APROBADO" "$SUMMARY"; then
+            echo "Pipeline aprobado según threshold"
+            exit 0
+          else
+            echo "Pipeline no aprobado según threshold"
+            exit 1
+          fi
+
 
   regression:
     environment: qa
     name: Regression Tests
     needs: sonarqube
+
     if: github.event_name != 'workflow_dispatch' || inputs.suite == 'regression'
 
     runs-on: ubuntu-latest
@@ -160,20 +166,21 @@ jobs:
 
       - name: Ejecutar Regression
         env:
-          SCREENSHOT: ${{ secrets.SCREENSHOT}}
-          BROWSER: ${{ secrets.BROWSER}}
+          SCREENSHOT: ${{ secrets.SCREENSHOT }}
+          BROWSER: ${{ secrets.BROWSER }}
           APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
-          APIKEY: ${{ secrets.OPENAI_API_KEY }} 
+          APIKEY: ${{ secrets.OPENAI_API_KEY }}
+
         run: |
           mvn clean test \
             -Dsurefire.suiteXmlFiles=src/test/resources/testng.xml \
             -Dgroups=regression \
-            -Dscreenshots=${SCREENSHOT} \
-            -Dbrowser=${BROWSER} \
+            -Dscreenshots="$SCREENSHOT" \
+            -Dbrowser="$BROWSER" \
             -Dheadless=true \
             -Dreport.scope=business \
-            -Dapproval.threshold=${APPROVAL_TEST} \
-            -Dopenai.apikey=${APIKEY} \
+            -Dapproval.threshold="$APPROVAL_TEST" \
+            -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true
 
       - name: Reporte Regression
@@ -181,19 +188,18 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: regression-report
-          path: |
-            reports/business/
-            
+          path: reports/business/
+
       - name: Validar umbral de aprobación
         run: |
-            SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
-        
-            echo "Validando reporte: $SUMMARY"
-        
-            if grep -q "Verdict: APROBADO" "$SUMMARY"; then
-              echo "Pipeline aprobado según threshold"
-              exit 0
-            else
-              echo "Pipeline no aprobado según threshold"
-              exit 1
-            fi
+          SUMMARY=$(ls -t reports/summary/business/TestSummary*.md | head -1)
+
+          echo "Validando reporte: $SUMMARY"
+
+          if grep -q "Verdict: APROBADO" "$SUMMARY"; then
+            echo "Pipeline aprobado según threshold"
+            exit 0
+          else
+            echo "Pipeline no aprobado según threshold"
+            exit 1
+          fi
