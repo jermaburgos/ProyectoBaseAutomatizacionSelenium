@@ -16,6 +16,8 @@
     <browser>chrome</browser>
     <headless>false</headless>
     <screenshots>false</screenshots>
+    <sonar.projectKey>yourStoreWithIA</sonar.projectKey>
+    <sonar.organization>jeremyburgos</sonar.organization>
   </properties>
 
   <dependencies>
