@@ -17,7 +17,7 @@
     <headless>false</headless>
     <screenshots>false</screenshots>
     <sonar.projectKey>yourStoreWithIA</sonar.projectKey>
-    <sonar.organization>jeremyburgos</sonar.organization>
+    <sonar.organization>jermaburgos</sonar.organization>
   </properties>
 
   <dependencies>
