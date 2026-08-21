@@ -6,7 +6,9 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -16,9 +18,9 @@ public class SupabaseReportService {
             Path reportPath,
             ZonedDateTime executionStartedAt,
             ZonedDateTime executionFinishedAt,
-            GroupStatistics overallStatistics,
             String veredictoFinal,
-            List<ExecutionTestResult> executionTests
+            List<ExecutionTestResult> executionTests,
+            List<String> xmlTestNames
     ) {
         String functionUrl = firstNonBlank(
                 System.getProperty("supabase.ingest.url"),
@@ -34,6 +36,56 @@ public class SupabaseReportService {
             return;
         }
 
+        LinkedHashSet<String> nombresEjecucion = new LinkedHashSet<>();
+        if (xmlTestNames != null) {
+            for (String name : xmlTestNames) {
+                if (name != null && !name.isBlank()) {
+                    nombresEjecucion.add(name);
+                }
+            }
+        }
+
+        if (nombresEjecucion.isEmpty()) {
+            nombresEjecucion.add("testng");
+        }
+
+        for (String testName : nombresEjecucion) {
+            List<ExecutionTestResult> resultadosDelTest =
+                    filtrarResultadosPorContexto(executionTests, testName);
+
+            GroupStatistics estadisticasDelTest =
+                    calcularEstadisticas(resultadosDelTest);
+
+            String veredictoDelTest =
+                    estadisticasDelTest.isApproved(
+                            Double.parseDouble(System.getProperty("approval.threshold", "95"))
+                    )
+                            ? "APROBADO"
+                            : "NO APROBADO";
+
+            ExecutionRunPayload payload = construirPayload(
+                    executionStartedAt,
+                    executionFinishedAt,
+                    veredictoDelTest,
+                    reportPath,
+                    resultadosDelTest,
+                    testName,
+                    estadisticasDelTest
+            );
+
+            enviarPayload(functionUrl, ingestToken, testName, payload);
+        }
+    }
+
+    private ExecutionRunPayload construirPayload(
+            ZonedDateTime executionStartedAt,
+            ZonedDateTime executionFinishedAt,
+            String veredictoDelTest,
+            Path reportPath,
+            List<ExecutionTestResult> executionTests,
+            String executionTestName,
+            GroupStatistics statistics
+    ) {
         String reportName = null;
         String reportBase64 = null;
 
@@ -50,48 +102,16 @@ public class SupabaseReportService {
             }
         }
 
-        ExecutionRunPayload payload = construirPayload(
-                executionStartedAt,
-                executionFinishedAt,
-                overallStatistics,
-                veredictoFinal,
-                reportPath,
-                reportName,
-                reportBase64,
-                executionTests
-        );
-
-        try {
-            SupabaseExecutionClient client = new SupabaseExecutionClient(functionUrl, ingestToken);
-            String response = client.enviar(payload);
-            System.out.println("Supabase execution sync response: " + response);
-        } catch (Exception e) {
-            System.out.println(
-                    "No fue posible enviar la ejecución a Supabase: "
-                            + e.getMessage()
-            );
-        }
-    }
-
-    private ExecutionRunPayload construirPayload(
-            ZonedDateTime executionStartedAt,
-            ZonedDateTime executionFinishedAt,
-            GroupStatistics overallStatistics,
-            String veredictoFinal,
-            Path reportPath,
-            String reportName,
-            String reportBase64,
-            List<ExecutionTestResult> executionTests
-    ) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("project", "ProyectoBaseAutomatizacionSelenium");
         metadata.put("report_scope", System.getProperty("report.scope", "business"));
         metadata.put("report_file", reportPath != null ? reportPath.toString() : "N/A");
+        metadata.put("xml_test_name", executionTestName);
         metadata.put("execution_started_at", formatearTimestampSupabase(executionStartedAt));
         metadata.put("execution_finished_at", formatearTimestampSupabase(executionFinishedAt));
 
         return new ExecutionRunPayload(
-                System.getProperty("suite.name", "testng"),
+                executionTestName,
                 System.getProperty("browser", "chrome"),
                 Boolean.parseBoolean(System.getProperty("headless", "false")),
                 formatearTimestampSupabase(executionStartedAt != null ? executionStartedAt : ZonedDateTime.now()),
@@ -99,18 +119,81 @@ public class SupabaseReportService {
                 executionStartedAt != null && executionFinishedAt != null
                         ? Duration.between(executionStartedAt, executionFinishedAt).toMillis()
                         : 0L,
-                overallStatistics.getTotal(),
-                overallStatistics.getPassed(),
-                overallStatistics.getFailed(),
-                overallStatistics.getSkipped(),
-                overallStatistics.getApprovalPercentage(),
-                veredictoFinal,
+                statistics.getTotal(),
+                statistics.getPassed(),
+                statistics.getFailed(),
+                statistics.getSkipped(),
+                statistics.getApprovalPercentage(),
+                veredictoDelTest,
                 reportName,
                 "text/html",
                 reportBase64,
                 metadata,
                 executionTests
         );
+    }
+
+    private void enviarPayload(
+            String functionUrl,
+            String ingestToken,
+            String testName,
+            ExecutionRunPayload payload
+    ) {
+        try {
+            SupabaseExecutionClient client = new SupabaseExecutionClient(functionUrl, ingestToken);
+            String response = client.enviar(payload);
+            System.out.println(
+                    "Supabase execution sync response for test '"
+                            + testName
+                            + "': "
+                            + response
+            );
+        } catch (Exception e) {
+            System.out.println(
+                    "No fue posible enviar la ejecución a Supabase para el test '"
+                            + testName
+                            + "': "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    private List<ExecutionTestResult> filtrarResultadosPorContexto(
+            List<ExecutionTestResult> executionTests,
+            String executionTestName
+    ) {
+        List<ExecutionTestResult> resultados = new ArrayList<>();
+
+        if (executionTests == null || executionTests.isEmpty()) {
+            return resultados;
+        }
+
+        for (ExecutionTestResult result : executionTests) {
+            if (result != null && executionTestName.equals(result.getTestContextName())) {
+                resultados.add(result);
+            }
+        }
+
+        return resultados;
+    }
+
+    private GroupStatistics calcularEstadisticas(List<ExecutionTestResult> executionTests) {
+        GroupStatistics statistics = new GroupStatistics();
+
+        for (ExecutionTestResult result : executionTests) {
+            statistics.incrementTotal();
+
+            String status = result.getStatus();
+            if ("PASSED".equals(status)) {
+                statistics.incrementPassed();
+            } else if ("FAILED".equals(status)) {
+                statistics.incrementFailed();
+            } else if ("SKIPPED".equals(status)) {
+                statistics.incrementSkipped();
+            }
+        }
+
+        return statistics;
     }
 
     private boolean configuracionSupabaseCompleta(String functionUrl, String ingestToken) {

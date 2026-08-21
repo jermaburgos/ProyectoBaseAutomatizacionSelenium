@@ -54,6 +54,9 @@ public class TestListener implements ITestListener, IExecutionListener {
     private final List<ExecutionTestResult> executionTests =
             new CopyOnWriteArrayList<>();
 
+    private final List<String> xmlTestNames =
+            new CopyOnWriteArrayList<>();
+
     private static final AtomicBoolean executionFinished =
             new AtomicBoolean(false);
 
@@ -89,6 +92,14 @@ public class TestListener implements ITestListener, IExecutionListener {
                     "No fue posible inicializar el reporte del test: "
                             + e.getMessage()
             );
+        }
+    }
+
+    @Override
+    public void onStart(ITestContext context) {
+        String testName = context.getName();
+        if (testName != null && !testName.isBlank()) {
+            xmlTestNames.add(testName);
         }
     }
 
@@ -201,9 +212,9 @@ public class TestListener implements ITestListener, IExecutionListener {
                 ExtentManager.getReportFilePath(),
                 executionStartedAt,
                 executionFinishedAt,
-                overallStatistics,
                 veredictoFinal,
-                executionTests
+                executionTests,
+                xmlTestNames
         );
 
         generateGroupReport();

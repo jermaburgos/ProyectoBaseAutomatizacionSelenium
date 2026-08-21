@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class ExecutionRunPayload {
 
-    private final String suite;
+    private final String xmlTestName;
     private final String browser;
     private final boolean headless;
     private final String startedAt;
@@ -26,7 +26,7 @@ public class ExecutionRunPayload {
     private final List<ExecutionTestResult> tests;
 
     public ExecutionRunPayload(
-            String suite,
+            String xmlTestName,
             String browser,
             boolean headless,
             String startedAt,
@@ -44,7 +44,7 @@ public class ExecutionRunPayload {
             Map<String, Object> metadata,
             List<ExecutionTestResult> tests
     ) {
-        this.suite = suite;
+        this.xmlTestName = xmlTestName;
         this.browser = browser;
         this.headless = headless;
         this.startedAt = startedAt;
@@ -66,7 +66,7 @@ public class ExecutionRunPayload {
     public String toJson() {
         StringBuilder json = new StringBuilder();
         json.append("{");
-        appendString(json, "suite", suite);
+        appendString(json, "xml_test_name", xmlTestName);
         appendString(json, "browser", browser);
         appendBoolean(json, "headless", headless);
         appendString(json, "started_at", startedAt);

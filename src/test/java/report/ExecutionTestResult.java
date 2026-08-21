@@ -14,6 +14,7 @@ public class ExecutionTestResult {
     private final String groupName;
     private final String status;
     private final long durationMs;
+    private final String testContextName;
     private final String errorMessage;
     private final String stacktrace;
     private final String lastStep;
@@ -27,6 +28,7 @@ public class ExecutionTestResult {
             String groupName,
             String status,
             long durationMs,
+            String testContextName,
             String errorMessage,
             String stacktrace,
             String lastStep,
@@ -39,6 +41,7 @@ public class ExecutionTestResult {
         this.groupName = groupName;
         this.status = status;
         this.durationMs = durationMs;
+        this.testContextName = testContextName;
         this.errorMessage = errorMessage;
         this.stacktrace = stacktrace;
         this.lastStep = lastStep;
@@ -64,6 +67,7 @@ public class ExecutionTestResult {
         String stacktrace = null;
         String lastStep = null;
         String lastLocator = null;
+        String testContextName = result.getTestContext() != null ? result.getTestContext().getName() : null;
 
         if (failure != null) {
             errorMessage = failure.getError();
@@ -75,7 +79,7 @@ public class ExecutionTestResult {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("browser", System.getProperty("browser", "chrome"));
         metadata.put("headless", Boolean.parseBoolean(System.getProperty("headless", "false")));
-        metadata.put("suite", result.getTestContext() != null ? result.getTestContext().getName() : "N/A");
+        metadata.put("xml_test_name", testContextName != null ? testContextName : "N/A");
 
         return new ExecutionTestResult(
                 result.getMethod().getMethodName(),
@@ -83,6 +87,7 @@ public class ExecutionTestResult {
                 joiner.toString(),
                 status,
                 durationMs,
+                testContextName,
                 errorMessage,
                 stacktrace,
                 lastStep,
@@ -100,6 +105,7 @@ public class ExecutionTestResult {
         appendString(json, "group_name", groupName);
         appendString(json, "status", status);
         appendNumber(json, "duration_ms", durationMs);
+        appendNullableString(json, "test_context_name", testContextName);
         appendNullableString(json, "error_message", errorMessage);
         appendNullableString(json, "stacktrace", stacktrace);
         appendNullableString(json, "last_step", lastStep);
@@ -128,6 +134,14 @@ public class ExecutionTestResult {
     private static void appendNumber(StringBuilder json, String key, long value) {
         json.append("\"").append(escapeJson(key)).append("\":");
         json.append(value).append(",");
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public String getTestContextName() {
+        return testContextName;
     }
 
     private static void appendObject(StringBuilder json, String key, Map<String, Object> value) {
