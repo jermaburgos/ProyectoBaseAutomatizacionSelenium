@@ -14,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ExtentManager {
     private static ExtentReports extent;
+    private static Path reportFilePath;
 
     public static ExtentReports getInstance() {
         if (extent == null) {
@@ -59,6 +60,8 @@ public class ExtentManager {
                                 + fechaFormateada
                                 + ".html"
                 );
+
+        reportFilePath = rutaReporte;
 
         ExtentSparkReporter spark =
                 new ExtentSparkReporter(
@@ -117,5 +120,9 @@ public class ExtentManager {
         ZonedDateTime ahora = ZonedDateTime.now();
         DateTimeFormatter formato = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         return ahora.format(formato);
+    }
+
+    public static Path getReportFilePath() {
+        return reportFilePath;
     }
 }

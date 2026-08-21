@@ -2,9 +2,8 @@ package page;
 
 import locators.cameras_locators;
 import org.openqa.selenium.WebDriver;
-import org.testng.Assert;
 
-public class page_cameras extends page_generic implements cameras_locators {
+public class page_cameras extends page_product_base implements cameras_locators {
 
     public page_cameras(WebDriver driver) {
         super(driver);
@@ -15,13 +14,12 @@ public class page_cameras extends page_generic implements cameras_locators {
     }
 
     public void seleccionarProducto(String textElement) {
-        ejecutarPaso("Seleccionar producto: " + textElement, () -> {
-            clicElement(cameras_locators.elementAByText(textElement));
-        });
-
-        ejecutarPaso("Validar que se haya seleccionado el producto: " + textElement, () -> {
-            validateTitle(textElement, cameras_locators.elementTitleByText(textElement));
-        });
+        seleccionarProductoConValidacion(
+                "Seleccionar producto: " + textElement,
+                textElement,
+                locators.generic_locators.elementAByText(textElement),
+                locators.generic_locators.elementTitleByText(textElement)
+        );
     }
 
     public void seleccionarProducto(String textElement, String optionVisibleText) {
@@ -35,14 +33,6 @@ public class page_cameras extends page_generic implements cameras_locators {
     }
 
     public void agregarCarrito() {
-        ejecutarPaso("Agregar producto al carrito", () -> {
-            clicElement(button_addToCart);
-        });
-
-        String mensaje = getTextElement(div_added_cart);
-        Assert.assertTrue(
-                mensaje.contains("Success: You have added"),
-                "El mensaje de éxito no es el esperado"
-        );
+        agregarProductoAlCarrito(button_addToCart, div_added_cart);
     }
 }

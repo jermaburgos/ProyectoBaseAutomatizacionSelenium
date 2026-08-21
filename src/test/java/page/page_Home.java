@@ -1,14 +1,11 @@
 package page;
 
 import locators.home_locators;
-import locators.phones_locators;
-import locators.cameras_locators;
 import locators.components_locators;
-import locators.cart_locators;
 import org.openqa.selenium.WebDriver;
 
 public class page_Home extends page_generic
-        implements home_locators, phones_locators, cart_locators, components_locators, cameras_locators {
+        implements home_locators, components_locators {
 
 
 
@@ -21,12 +18,12 @@ public class page_Home extends page_generic
 
     public void clickPhones() {
         clicElement(btn_phones);
-        validateTitle("Phones & PDAs", title_phones);
+        validateTitle("Phones & PDAs", locators.phones_locators.title_phones);
     }
 
     public void clickCameras() {
         clicElement(btn_cameras);
-        validateTitle("Cameras", title_cameras);
+        validateTitle("Cameras", locators.cameras_locators.title_cameras);
     }
 
     public void ingresarCarrito() {

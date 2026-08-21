@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TestListener implements ITestListener, IExecutionListener {
     private static ExtentReports extent =
@@ -41,11 +42,17 @@ public class TestListener implements ITestListener, IExecutionListener {
     private final FailureContextBuilder failureContextBuilder =
             new FailureContextBuilder();
 
+    private final SupabaseReportService supabaseReportService =
+            new SupabaseReportService();
+
     private final Map<String, GroupStatistics> groupStatistics =
             new ConcurrentHashMap<>();
 
     private final GroupStatistics overallStatistics =
             new GroupStatistics();
+
+    private final List<ExecutionTestResult> executionTests =
+            new CopyOnWriteArrayList<>();
 
     private static final AtomicBoolean executionFinished =
             new AtomicBoolean(false);
@@ -54,6 +61,9 @@ public class TestListener implements ITestListener, IExecutionListener {
             Double.parseDouble(
                     System.getProperty("approval.threshold", "95")
             );
+
+    private ZonedDateTime executionStartedAt;
+    private ZonedDateTime executionFinishedAt;
 
     @Override
     public void onTestStart(ITestResult result) {
@@ -84,6 +94,7 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     @Override
     public void onTestSuccess(ITestResult result) {
+        registrarResultadoTest(result, "PASSED", null);
         reportHelper.safePass(getTest(), "Resultado: PASSED");
 
         registerOverallResult("PASSED");
@@ -107,6 +118,8 @@ public class TestListener implements ITestListener, IExecutionListener {
             // Construir contexto para IA
             FailureContext failure =
                     failureContextBuilder.build(result);
+
+            registrarResultadoTest(result, "FAILED", failure);
 
             reportHelper.safeInfo(
                     getTest(),
@@ -137,6 +150,7 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     @Override
     public void onTestSkipped(ITestResult result) {
+        registrarResultadoTest(result, "SKIPPED", null);
         reportHelper.safeSkip(getTest(), "Prueba omitida");
 
         registerOverallResult("SKIPPED");
@@ -151,7 +165,7 @@ public class TestListener implements ITestListener, IExecutionListener {
 
     @Override
     public void onExecutionStart() {
-        // No-op.
+        executionStartedAt = ZonedDateTime.now();
     }
 
     @Override
@@ -160,18 +174,37 @@ public class TestListener implements ITestListener, IExecutionListener {
             return;
         }
 
+        executionFinishedAt = ZonedDateTime.now();
         String veredictoFinal = obtenerVeredictoFinal();
+
         try {
             generarResumenFinal();
             aplicarResumenAExtent();
             registrarVeredictoFinal();
-            extent.flush();
         } catch (Exception e) {
             System.out.println(
-                    "No fue posible cerrar el reporte Extent: "
+                    "No fue posible preparar el reporte Extent: "
                             + e.getMessage()
             );
         }
+
+        try {
+            extent.flush();
+        } catch (Exception e) {
+            System.out.println(
+                    "No fue posible escribir el reporte Extent a disco: "
+                            + e.getMessage()
+            );
+        }
+
+        supabaseReportService.enviarSiConfigurado(
+                ExtentManager.getReportFilePath(),
+                executionStartedAt,
+                executionFinishedAt,
+                overallStatistics,
+                veredictoFinal,
+                executionTests
+        );
 
         generateGroupReport();
         generateOverallReport();
@@ -486,6 +519,16 @@ public class TestListener implements ITestListener, IExecutionListener {
     private void registrarVeredictoFinal() {
         String veredicto = obtenerVeredictoFinal();
         System.out.println("FINAL VERDICT | " + veredicto);
+    }
+
+    private void registrarResultadoTest(
+            ITestResult result,
+            String status,
+            FailureContext failure) {
+
+        executionTests.add(
+                ExecutionTestResult.from(result, status, failure)
+        );
     }
 
     private String obtenerVeredictoFinal() {

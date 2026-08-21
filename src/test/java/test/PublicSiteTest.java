@@ -9,7 +9,7 @@ public class PublicSiteTest extends baseTest {
 
     @Test(groups = {"smoke","regression"})
     @Description("Test para agregar un producto al carrito de compras en el sitio web de OpenCart")
-    public void addCart() throws InterruptedException {
+    public void addCart() {
 
         generic.navigateTo("https://opencart.abstracta.us/", "your store");
         home.clickPhones();
@@ -38,7 +38,7 @@ public class PublicSiteTest extends baseTest {
 
     @Test(priority = 1, groups = {"critical", "smoke", "regression"})
     @Description("Caso critico de regresion para agregar productos desde Components y Phones y validar el carrito")
-    public void addComponentsAndPhonesProducts() throws InterruptedException {
+    public void addComponentsAndPhonesProducts() {
 
         generic.navigateTo("https://opencart.abstracta.us/", "your store");
 

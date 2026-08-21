@@ -1,11 +1,9 @@
 package page;
 
-import context.ContextManager;
 import locators.components_locators;
 import org.openqa.selenium.WebDriver;
-import org.testng.Assert;
 
-public class page_components extends page_generic implements components_locators {
+public class page_components extends page_product_base implements components_locators {
 
     public page_components(WebDriver driver) {
         super(driver);
@@ -18,27 +16,27 @@ public class page_components extends page_generic implements components_locators
     }
 
     public void seleccionarProducto(String textElement, boolean recoverPrice) {
-        ejecutarPaso("Seleccionar producto: " + textElement, () -> {
-            clicElement(components_locators.elementAByText(textElement));
-        });
+        seleccionarProductoConValidacion(
+                "Seleccionar producto: " + textElement,
+                textElement,
+                locators.generic_locators.elementAByText(textElement),
+                locators.generic_locators.elementTitleByText(textElement)
+        );
 
         if (recoverPrice) {
-            String price = getTextElement(components_locators.returnPriceComponentToTitleText(textElement));
-            ContextManager.getContext().setPrecio(price);
+            ejecutarPaso(
+                    "Recuperar precio del componente: " + textElement,
+                    () -> guardarPrecioEnContexto(
+                            components_locators.returnPriceComponentToTitleText(textElement)
+                    )
+            );
         }
-
-        ejecutarPaso("Validar que se haya seleccionado el producto: " + textElement, () -> {
-            validateTitle(textElement, components_locators.elementTitleByText(textElement));
-        });
     }
 
     public void agregarAlCarrito() {
-        ejecutarPaso("Agregar producto al carrito", () -> clicElement(components_locators.elementButtonById("button-cart")));
-
-        String mensaje = getTextElement(alert_success);
-        Assert.assertTrue(
-                mensaje.contains("Success: You have added"),
-                "El mensaje de éxito no es el esperado"
+        agregarProductoAlCarrito(
+                locators.generic_locators.elementButtonById("button-cart"),
+                div_added_cart
         );
     }
 }

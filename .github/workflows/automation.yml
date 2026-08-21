@@ -1,5 +1,7 @@
 name: QA Automation
-
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL}}
+  TOKEN_INGEST: ${{ secrets.INGEST_TOKEN}}
 on:
   push:
     branches: [main, develop]
@@ -121,7 +123,9 @@ jobs:
             -Dreport.scope=business \
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
-            -Dmaven.test.failure.ignore=true
+            -Dmaven.test.failure.ignore=true \
+            -Dsupabase.ingest.url="$SUPABASE_URL"
+            -Dsupabase.ingest.token="$TOKEN_INGEST"
 
       - name: Reporte Smoke
         if: always()
@@ -181,7 +185,9 @@ jobs:
             -Dreport.scope=business \
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
-            -Dmaven.test.failure.ignore=true
+            -Dmaven.test.failure.ignore=true \
+            -Dsupabase.ingest.url="$SUPABASE_URL"
+            -Dsupabase.ingest.token="$TOKEN_INGEST"
 
       - name: Reporte Regression
         if: always()
