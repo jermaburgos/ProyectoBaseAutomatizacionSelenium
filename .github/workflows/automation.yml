@@ -124,7 +124,7 @@ jobs:
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true \
-            -Dsupabase.ingest.url="$SUPABASE_URL"
+            -Dsupabase.ingest.url="$SUPABASE_URL" \
             -Dsupabase.ingest.token="$TOKEN_INGEST"
 
       - name: Reporte Smoke
@@ -186,7 +186,7 @@ jobs:
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true \
-            -Dsupabase.ingest.url="$SUPABASE_URL"
+            -Dsupabase.ingest.url="$SUPABASE_URL" \
             -Dsupabase.ingest.token="$TOKEN_INGEST"
 
       - name: Reporte Regression
