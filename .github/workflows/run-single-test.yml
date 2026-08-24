@@ -37,8 +37,7 @@ jobs:
             if grep -Fq "void ${TEST_NAME}(" "$FILE" || \
                grep -Fq "void ${TEST_NAME} (" "$FILE" || \
                grep -Fq "${TEST_NAME}(" "$FILE"; then
-              MATCHES="${MATCHES}
-$FILE"
+              MATCHES="$(printf '%s\n%s' "${MATCHES}" "$FILE")"
               COUNT=$((COUNT + 1))
             fi
           done < <(find src/test/java/test -name '*.java' -type f)
