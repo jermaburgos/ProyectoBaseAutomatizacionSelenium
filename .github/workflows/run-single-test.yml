@@ -8,9 +8,6 @@ on:
         required: true
         type: string
         default: "agregarProductosDesdeCameras"
-  push:
-    branches:
-      - feature/webYourStore
 
 jobs:
 
@@ -65,6 +62,7 @@ jobs:
           TEST_CLASS="${TEST_FILE#src/test/java/}"
           TEST_CLASS="${TEST_CLASS%.java}"
           TEST_CLASS="${TEST_CLASS//\//.}"
+          TEST_CLASS="${TEST_CLASS#test.}"
 
           echo "target=${TEST_CLASS}#${TEST_NAME}" >> "$GITHUB_OUTPUT"
           echo "Resolved target: ${TEST_CLASS}#${TEST_NAME}"
