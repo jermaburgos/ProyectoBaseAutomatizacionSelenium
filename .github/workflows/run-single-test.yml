@@ -1,0 +1,70 @@
+name: Run Single Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_name:
+        description: "Nombre del metodo de test a ejecutar"
+        required: true
+        type: string
+
+jobs:
+  run-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      - name: Resolve test target
+        id: resolve
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TEST_NAME="${{ inputs.test_name }}"
+          MATCHES=""
+          COUNT=0
+
+          while IFS= read -r FILE; do
+            if grep -Fq "void ${TEST_NAME}(" "$FILE" || \
+               grep -Fq "void ${TEST_NAME} (" "$FILE" || \
+               grep -Fq "${TEST_NAME}(" "$FILE"; then
+              MATCHES="${MATCHES}
+$FILE"
+              COUNT=$((COUNT + 1))
+            fi
+          done < <(find src/test/java/test -name '*.java' -type f)
+
+          MATCHES="$(printf '%s\n' "${MATCHES}" | sed '/^$/d')"
+
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "No se encontro ningun metodo de test con el nombre: ${TEST_NAME}"
+            exit 1
+          fi
+
+          if [ "${COUNT}" -gt 1 ]; then
+            echo "El nombre de test es ambiguo. Coincide en mas de una clase:"
+            printf '%s\n' "${MATCHES}"
+            exit 1
+          fi
+
+          TEST_FILE="${MATCHES}"
+          TEST_CLASS="${TEST_FILE#src/test/java/}"
+          TEST_CLASS="${TEST_CLASS%.java}"
+          TEST_CLASS="${TEST_CLASS//\//.}"
+
+          echo "target=${TEST_CLASS}#${TEST_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Resolved target: ${TEST_CLASS}#${TEST_NAME}"
+
+      - name: Run selected test
+        shell: bash
+        run: |
+          mvn test -Dtest=${{ steps.resolve.outputs.target }}
