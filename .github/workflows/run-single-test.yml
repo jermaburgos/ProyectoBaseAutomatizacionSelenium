@@ -13,6 +13,7 @@ on:
       - feature/webYourStore
 
 jobs:
+  environment: qa
   run-test:
     runs-on: ubuntu-latest
 
@@ -69,5 +70,19 @@ jobs:
 
       - name: Run selected test
         shell: bash
+        env:
+          SCREENSHOT: ${{ secrets.SCREENSHOT }}
+          BROWSER: ${{ secrets.BROWSER }}
+          APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
+          APIKEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          mvn test -Dtest=${{ steps.resolve.outputs.target }}
+          mvn test -Dtest=${{ steps.resolve.outputs.target }} \
+          -Dscreenshots="$SCREENSHOT" \
+          -Dbrowser="$BROWSER" \
+          -Dheadless=true \
+          -Dreport.scope=business \
+          -Dapproval.threshold="$APPROVAL_TEST" \
+          -Dopenai.apikey="$APIKEY" \
+          -Dmaven.test.failure.ignore=true \
+          -Dsupabase.ingest.url="$SUPABASE_URL" \
+          -Dsupabase.ingest.token="$TOKEN_INGEST"
