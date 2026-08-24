@@ -13,10 +13,11 @@ on:
       - feature/webYourStore
 
 jobs:
-  environment: qa
+
   run-test:
     runs-on: ubuntu-latest
     environment: qa
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
