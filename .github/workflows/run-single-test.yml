@@ -1,5 +1,7 @@
 name: Run Single Test
-
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL}}
+  TOKEN_INGEST: ${{ secrets.INGEST_TOKEN}}
 on:
   workflow_dispatch:
     inputs:
