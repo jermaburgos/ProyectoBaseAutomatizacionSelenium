@@ -87,3 +87,10 @@ jobs:
           -Dmaven.test.failure.ignore=true \
           -Dsupabase.ingest.url="$SUPABASE_URL" \
           -Dsupabase.ingest.token="$TOKEN_INGEST"
+
+      - name: Reporte Smoke
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report
+          path: reports/business/
