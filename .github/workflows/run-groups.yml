@@ -1,6 +1,7 @@
 name: Run Groups
 
 on:
+  push:
   workflow_dispatch:
     inputs:
       test_groups:
@@ -50,6 +51,10 @@ jobs:
           set -euo pipefail
 
           GROUPS_RAW="${{ inputs.test_groups }}"
+          if [ -z "$GROUPS_RAW" ]; then
+            GROUPS_RAW="critical,smoke,regression"
+          fi
+
           GROUPS_LIST="$(printf '%s' "$GROUPS_RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d')"
 
           if [ -z "$GROUPS_LIST" ]; then
@@ -91,12 +96,27 @@ jobs:
           APIKEY: ${{ secrets.OPENAI_API_KEY }}
           SUPABASE_INGEST_URL: ${{ secrets.SUPABASE_INGEST_URL }}
           SUPABASE_INGEST_TOKEN: ${{ secrets.SUPABASE_INGEST_TOKEN }}
+          BROWSER_VALUE: ${{ inputs.browser }}
+          HEADLESS_VALUE: ${{ inputs.headless }}
+          SCREENSHOTS_VALUE: ${{ inputs.screenshots }}
         run: |
+          if [ -z "$BROWSER_VALUE" ]; then
+            BROWSER_VALUE="chrome"
+          fi
+
+          if [ -z "$HEADLESS_VALUE" ]; then
+            HEADLESS_VALUE="true"
+          fi
+
+          if [ -z "$SCREENSHOTS_VALUE" ]; then
+            SCREENSHOTS_VALUE="false"
+          fi
+
           mvn test \
             -Dsurefire.suiteXmlFiles="${{ steps.suite.outputs.suite_file }}" \
-            -Dscreenshots=${{ inputs.screenshots }} \
-            -Dbrowser=${{ inputs.browser }} \
-            -Dheadless=${{ inputs.headless }} \
+            -Dscreenshots="$SCREENSHOTS_VALUE" \
+            -Dbrowser="$BROWSER_VALUE" \
+            -Dheadless="$HEADLESS_VALUE" \
             -Dreport.scope=business \
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
