@@ -31,12 +31,68 @@ on:
         type: boolean
 
 jobs:
-  run-groups:
+  prepare_groups:
+    runs-on: ubuntu-latest
+    outputs:
+      groups_json: ${{ steps.build.outputs.groups_json }}
+      groups_label: ${{ steps.build.outputs.groups_label }}
+    steps:
+      - name: Build groups matrix
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GROUPS_RAW="${{ inputs.test_groups }}"
+          if [ -z "$GROUPS_RAW" ]; then
+            GROUPS_RAW="critical,smoke,regression"
+          fi
+
+          GROUPS_LIST="$(printf '%s' "$GROUPS_RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d')"
+
+          if [ -z "$GROUPS_LIST" ]; then
+            echo "No se recibieron grupos validos."
+            exit 1
+          fi
+
+          GROUPS_JSON="["
+          GROUPS_LABEL=""
+          FIRST_GROUP=1
+
+          while IFS= read -r GROUP; do
+            if [ "$FIRST_GROUP" -eq 0 ]; then
+              GROUPS_JSON="${GROUPS_JSON},"
+              GROUPS_LABEL="${GROUPS_LABEL},"
+            fi
+
+            SAFE_GROUP="${GROUP//\"/\\\"}"
+            GROUPS_JSON="${GROUPS_JSON}\"${SAFE_GROUP}\""
+            GROUPS_LABEL="${GROUPS_LABEL}${GROUP}"
+            FIRST_GROUP=0
+          done <<< "$GROUPS_LIST"
+
+          GROUPS_JSON="${GROUPS_JSON}]"
+
+          echo "groups_json=$GROUPS_JSON" >> "$GITHUB_OUTPUT"
+          echo "groups_label=$GROUPS_LABEL" >> "$GITHUB_OUTPUT"
+          echo "Grupos preparados: $GROUPS_LABEL"
+
+  run_group:
+    needs: prepare_groups
     runs-on: ubuntu-latest
     environment: qa
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ${{ fromJson(needs.prepare_groups.outputs.groups_json) }}
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL }}
       TOKEN_INGEST: ${{ secrets.INGEST_TOKEN }}
+      BROWSER_VALUE: ${{ inputs.browser }}
+      HEADLESS_VALUE: ${{ inputs.headless }}
+      SCREENSHOTS_VALUE: ${{ inputs.screenshots }}
+      APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
+      APIKEY: ${{ secrets.OPENAI_API_KEY }}
 
     steps:
       - name: Checkout
@@ -64,62 +120,11 @@ jobs:
             echo "TOKEN_INGEST vacio"
           fi
 
-      - name: Build TestNG suite
-        id: suite
+      - name: Run group ${{ matrix.group }}
         shell: bash
         run: |
           set -euo pipefail
 
-          GROUPS_RAW="${{ inputs.test_groups }}"
-          if [ -z "$GROUPS_RAW" ]; then
-            GROUPS_RAW="critical,smoke,regression"
-          fi
-
-          GROUPS_LIST="$(printf '%s' "$GROUPS_RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed '/^$/d')"
-
-          if [ -z "$GROUPS_LIST" ]; then
-            echo "No se recibieron grupos validos."
-            exit 1
-          fi
-
-          SUITE_FILE="$RUNNER_TEMP/testng-groups.xml"
-
-          {
-            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
-            printf '%s\n' '<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">'
-            printf '%s\n' '<suite name="Groups Suite">'
-            printf '%s\n' '  <test name="Selected Groups">'
-            printf '%s\n' '    <groups>'
-            printf '%s\n' '      <run>'
-
-            while IFS= read -r GROUP; do
-              printf '        <include name="%s"/>\n' "$GROUP"
-            done <<< "$GROUPS_LIST"
-
-            printf '%s\n' '      </run>'
-            printf '%s\n' '    </groups>'
-            printf '%s\n' '    <packages>'
-            printf '%s\n' '      <package name="test"/>'
-            printf '%s\n' '    </packages>'
-            printf '%s\n' '  </test>'
-            printf '%s\n' '</suite>'
-          } > "$SUITE_FILE"
-
-          echo "suite_file=$SUITE_FILE" >> "$GITHUB_OUTPUT"
-          echo "resolved_groups=$GROUPS_RAW" >> "$GITHUB_OUTPUT"
-          echo "Suite generado en: $SUITE_FILE"
-          cat "$SUITE_FILE"
-
-      - name: Run selected groups
-        shell: bash
-        env:
-          APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
-          APIKEY: ${{ secrets.OPENAI_API_KEY }}
-          BROWSER_VALUE: ${{ inputs.browser }}
-          HEADLESS_VALUE: ${{ inputs.headless }}
-          SCREENSHOTS_VALUE: ${{ inputs.screenshots }}
-          GROUPS_IDENTIFIER: ${{ steps.suite.outputs.resolved_groups }}
-        run: |
           if [ -z "$BROWSER_VALUE" ]; then
             BROWSER_VALUE="chrome"
           fi
@@ -132,14 +137,36 @@ jobs:
             SCREENSHOTS_VALUE="false"
           fi
 
+          SUITE_FILE="$RUNNER_TEMP/run-group-${{ matrix.group }}.xml"
+
+          {
+            printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
+            printf '%s\n' '<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">'
+            printf '%s\n' '<suite name="Groups Suite">'
+            printf '  <test name="%s">\n' "${{ matrix.group }}"
+            printf '%s\n' '    <groups>'
+            printf '%s\n' '      <run>'
+            printf '        <include name="%s"/>\n' "${{ matrix.group }}"
+            printf '%s\n' '      </run>'
+            printf '%s\n' '    </groups>'
+            printf '%s\n' '    <packages>'
+            printf '%s\n' '      <package name="test"/>'
+            printf '%s\n' '    </packages>'
+            printf '%s\n' '  </test>'
+            printf '%s\n' '</suite>'
+          } > "$SUITE_FILE"
+
+          echo "Suite generado para grupo ${{ matrix.group }} en: $SUITE_FILE"
+          cat "$SUITE_FILE"
+
           mvn test \
-            -Dsurefire.suiteXmlFiles="${{ steps.suite.outputs.suite_file }}" \
+            -Dsurefire.suiteXmlFiles="$SUITE_FILE" \
             -Dscreenshots="$SCREENSHOTS_VALUE" \
             -Dbrowser="$BROWSER_VALUE" \
             -Dheadless="$HEADLESS_VALUE" \
             -Dreport.scope=business \
             -Dworkflow.mode=groups \
-            -Dworkflow.identifier="$GROUPS_IDENTIFIER" \
+            -Dworkflow.identifier="${{ matrix.group }}" \
             -Dgithub.run_id="${{ github.run_id }}" \
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
@@ -147,9 +174,9 @@ jobs:
             -Dsupabase.ingest.url="$SUPABASE_URL" \
             -Dsupabase.ingest.token="$TOKEN_INGEST"
 
-      - name: Reporte Smoke
+      - name: Reporte ${{ matrix.group }}
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: smoke-report
+          name: ${{ matrix.group }}-report
           path: reports/business/
