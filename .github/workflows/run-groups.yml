@@ -1,5 +1,9 @@
 name: Run Groups
 
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL }}
+  TOKEN_INGEST: ${{ secrets.INGEST_TOKEN }}
+
 on:
   push:
     branches:
@@ -96,8 +100,6 @@ jobs:
         env:
           APPROVAL_TEST: ${{ secrets.APPROVAL_THRESHOLD_TEST }}
           APIKEY: ${{ secrets.OPENAI_API_KEY }}
-          SUPABASE_INGEST_URL: ${{ secrets.SUPABASE_INGEST_URL }}
-          SUPABASE_INGEST_TOKEN: ${{ secrets.SUPABASE_INGEST_TOKEN }}
           BROWSER_VALUE: ${{ inputs.browser }}
           HEADLESS_VALUE: ${{ inputs.headless }}
           SCREENSHOTS_VALUE: ${{ inputs.screenshots }}
@@ -123,5 +125,12 @@ jobs:
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true \
-            -Dsupabase.ingest.url="$SUPABASE_INGEST_URL" \
-            -Dsupabase.ingest.token="$SUPABASE_INGEST_TOKEN"
+            -Dsupabase.ingest.url="$SUPABASE_URL" \
+            -Dsupabase.ingest.token="$TOKEN_INGEST"
+
+      - name: Reporte Smoke
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: smoke-report
+          path: reports/business/
