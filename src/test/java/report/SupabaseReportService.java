@@ -107,6 +107,9 @@ public class SupabaseReportService {
         metadata.put("report_scope", System.getProperty("report.scope", "business"));
         metadata.put("report_file", reportPath != null ? reportPath.toString() : "N/A");
         metadata.put("xml_test_name", executionTestName);
+        metadata.put("workflow_mode", System.getProperty("workflow.mode", "unknown"));
+        metadata.put("workflow_identifier", System.getProperty("workflow.identifier", executionTestName));
+        metadata.put("github_run_id", System.getProperty("github.run_id", ""));
         metadata.put("execution_started_at", formatearTimestampSupabase(executionStartedAt));
         metadata.put("execution_finished_at", formatearTimestampSupabase(executionFinishedAt));
 

@@ -1,9 +1,5 @@
 name: Run Groups
 
-env:
-  SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL }}
-  TOKEN_INGEST: ${{ secrets.INGEST_TOKEN }}
-
 on:
   push:
     branches:
@@ -38,6 +34,9 @@ jobs:
   run-groups:
     runs-on: ubuntu-latest
     environment: qa
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_INGEST_URL }}
+      TOKEN_INGEST: ${{ secrets.INGEST_TOKEN }}
 
     steps:
       - name: Checkout
@@ -49,6 +48,21 @@ jobs:
           distribution: temurin
           java-version: "11"
           cache: maven
+
+      - name: Verify Supabase env
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_URL" ]; then
+            echo "SUPABASE_URL configurada"
+          else
+            echo "SUPABASE_URL vacia"
+          fi
+
+          if [ -n "$TOKEN_INGEST" ]; then
+            echo "TOKEN_INGEST configurado"
+          else
+            echo "TOKEN_INGEST vacio"
+          fi
 
       - name: Build TestNG suite
         id: suite
@@ -92,6 +106,7 @@ jobs:
           } > "$SUITE_FILE"
 
           echo "suite_file=$SUITE_FILE" >> "$GITHUB_OUTPUT"
+          echo "resolved_groups=$GROUPS_RAW" >> "$GITHUB_OUTPUT"
           echo "Suite generado en: $SUITE_FILE"
           cat "$SUITE_FILE"
 
@@ -103,6 +118,7 @@ jobs:
           BROWSER_VALUE: ${{ inputs.browser }}
           HEADLESS_VALUE: ${{ inputs.headless }}
           SCREENSHOTS_VALUE: ${{ inputs.screenshots }}
+          GROUPS_IDENTIFIER: ${{ steps.suite.outputs.resolved_groups }}
         run: |
           if [ -z "$BROWSER_VALUE" ]; then
             BROWSER_VALUE="chrome"
@@ -122,6 +138,9 @@ jobs:
             -Dbrowser="$BROWSER_VALUE" \
             -Dheadless="$HEADLESS_VALUE" \
             -Dreport.scope=business \
+            -Dworkflow.mode=groups \
+            -Dworkflow.identifier="$GROUPS_IDENTIFIER" \
+            -Dgithub.run_id="${{ github.run_id }}" \
             -Dapproval.threshold="$APPROVAL_TEST" \
             -Dopenai.apikey="$APIKEY" \
             -Dmaven.test.failure.ignore=true \
