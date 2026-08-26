@@ -1,9 +1,6 @@
 name: Run Groups
 
 on:
-  push:
-    branches:
-      - feature/webYourStore
   workflow_dispatch:
     inputs:
       test_groups:
